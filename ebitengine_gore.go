@@ -1,7 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"image"
+	"math"
+	"math/rand"
+	"runtime"
 	"sync"
 
 	"github.com/AndreRenaud/gore"
@@ -26,8 +30,15 @@ type DoomGame struct {
 	lock        sync.Mutex
 	terminating bool
 
-	frames   chan Frame
-	autoMode func()
+	rng       *rand.Rand
+	auto      [][Actions]Auto
+	mind      [Actions]Auto
+	votes     [Actions]float32
+	iteration int
+	state     State
+	w, h      int
+	autoMode  bool
+	last      TypeAction
 }
 
 func (g *DoomGame) Update() error {
@@ -68,7 +79,26 @@ func (g *DoomGame) Update() error {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 	if inpututil.IsKeyJustPressed(ebiten.KeyK) {
-		g.autoMode()
+		g.autoMode = !g.autoMode
+		if !g.autoMode && g.last != ActionCount {
+			var event gore.DoomEvent
+			event.Type = gore.Ev_keyup
+			switch g.last {
+			case ActionLeft:
+				event.Key = gore.KEY_LEFTARROW1
+			case ActionRight:
+				event.Key = gore.KEY_RIGHTARROW1
+			case ActionForward:
+				event.Key = gore.KEY_UPARROW1
+			case ActionBackward:
+				event.Key = gore.KEY_DOWNARROW1
+			case ActionNone:
+			case ActionActivate:
+				event.Key = gore.KEY_USE1
+			}
+			g.events = append(g.events, event)
+			g.last = ActionCount
+		}
 	}
 	for key, doomKey := range keys {
 		if inpututil.IsKeyJustPressed(key) {
@@ -137,7 +167,189 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
-	g.frames <- Frame{frame}
+	img := Frame{frame}
+	width := img.Frame.Bounds().Max.X
+	height := img.Frame.Bounds().Max.Y
+	if g.auto == nil {
+		w, h := width/8, height/8
+		fmt.Println(width, height, w, h, w*h)
+		g.auto = make([][Actions]Auto, w*h)
+		for i := range g.auto {
+			for ii := range g.auto[i] {
+				g.auto[i][ii].Auto = NewAutoEncoder(8*8, true)
+				g.auto[i][ii].Action = TypeAction(ii)
+			}
+		}
+		g.w, g.h = w, h
+	}
+	type Patch struct {
+		Input   []float32
+		Output  []float32
+		Entropy float32
+	}
+	pixels := make([]Patch, 0, 8)
+	rng := g.rng
+	for y := 0; y < height-8; y += 8 {
+		for x := 0; x < width-8; x += 8 {
+			input, output := make([]float32, 8*8), make([]float32, 8*8)
+			var histogram [256]float32
+			for yy := 0; yy < 8; yy++ {
+				for xx := 0; xx < 8; xx++ {
+					g := img.GrayAt(x+xx, y+yy)
+					pixel := float32(g.Y) / 255
+					output[yy*8+xx] = pixel
+					pixel += float32(rng.NormFloat64() / 16)
+					if pixel < 0 {
+						pixel = 0
+					}
+					if pixel > 1 {
+						pixel = 1
+					}
+					input[yy*8+xx] = pixel
+					histogram[g.Y]++
+				}
+			}
+			entropy := float32(0.0)
+			for _, value := range histogram {
+				if value == 0 {
+					continue
+				}
+				entropy += (value / (float32(8 * 8))) * float32(math.Log2(float64(value)/float64(8*8)))
+			}
+			pixels = append(pixels, Patch{
+				Input:   input,
+				Output:  output,
+				Entropy: -entropy,
+			})
+		}
+	}
+
+	indexes := rand.Perm((g.w - 1) * (g.h - 1))
+	indexes = indexes[:len(indexes)/64]
+
+	type Vote struct {
+		Min     int
+		Max     int
+		Entropy float32
+	}
+	done := make(chan Vote, 8)
+	measure := func(i int, seed int64) {
+		rng := rand.New(rand.NewSource(seed))
+		min, max, minIndex, maxIndex := float32(math.MaxFloat32), float32(0), 0, 0
+		for ii := range g.auto[i] {
+			value := g.auto[i][ii].Auto.Measure(pixels[i].Input, pixels[i].Output, &g.state)
+			if value < min {
+				min, minIndex = value, ii
+			}
+			if value > max {
+				max, maxIndex = value, ii
+			}
+		}
+		g.auto[i][maxIndex].Auto.Encode(pixels[i].Input, pixels[i].Output, rng, &g.state)
+		done <- Vote{
+			Min:     minIndex,
+			Max:     maxIndex,
+			Entropy: pixels[i].Entropy,
+		}
+	}
+	index, flight, cpus := 0, 0, runtime.NumCPU()
+	for index < len(indexes) && flight < cpus {
+		go measure(indexes[index], g.rng.Int63())
+		flight++
+		index++
+	}
+	for index < len(indexes) {
+		act := <-done
+		if act.Min >= 0 {
+			g.votes[act.Min] += act.Entropy
+		}
+		if act.Max >= 0 {
+			g.votes[act.Max] += act.Entropy
+		}
+		flight--
+
+		go measure(indexes[index], g.rng.Int63())
+		flight++
+		index++
+	}
+	for range flight {
+		act := <-done
+		if act.Min >= 0 {
+			g.votes[act.Min] += act.Entropy
+		}
+		if act.Max >= 0 {
+			g.votes[act.Max] += act.Entropy
+		}
+	}
+	if g.iteration%30 == 0 {
+		input, output := make([]float32, Actions), make([]float32, Actions)
+		sum := float32(0.0)
+		for _, value := range g.votes {
+			sum += value
+		}
+		for i, value := range g.votes {
+			input[i] = value / sum
+			output[i] = value / sum
+			g.votes[i] = 0.0
+		}
+		max, min, learn, action := float32(0.0), float32(math.MaxFloat32), TypeAction(0), TypeAction(0)
+		for i := range g.mind {
+			value := g.mind[i].Auto.Measure(input, output, &g.state)
+			if value > max {
+				max, learn = value, g.mind[i].Action
+			}
+			if value < min {
+				min, action = value, g.mind[i].Action
+			}
+		}
+		g.mind[learn].Auto.Encode(input, output, g.rng, &g.state)
+
+		if g.autoMode && g.last != ActionCount {
+			var event gore.DoomEvent
+			event.Type = gore.Ev_keyup
+			switch g.last {
+			case ActionLeft:
+				event.Key = gore.KEY_LEFTARROW1
+			case ActionRight:
+				event.Key = gore.KEY_RIGHTARROW1
+			case ActionForward:
+				event.Key = gore.KEY_UPARROW1
+			case ActionBackward:
+				event.Key = gore.KEY_DOWNARROW1
+			case ActionNone:
+			case ActionActivate:
+				event.Key = gore.KEY_USE1
+			}
+			g.events = append(g.events, event)
+		}
+		if g.autoMode {
+			var event gore.DoomEvent
+			event.Type = gore.Ev_keydown
+			switch action {
+			case ActionLeft:
+				event.Key = gore.KEY_LEFTARROW1
+			case ActionRight:
+				event.Key = gore.KEY_RIGHTARROW1
+			case ActionForward:
+				event.Key = gore.KEY_UPARROW1
+			case ActionBackward:
+				event.Key = gore.KEY_DOWNARROW1
+			case ActionNone:
+			case ActionActivate:
+				event.Key = gore.KEY_USE1
+			}
+			g.events = append(g.events, event)
+		}
+		g.last = action
+
+		pre := TypeAction(action)
+		for ii, value := range g.state {
+			g.state[ii], pre = pre, value
+		}
+	}
+
+	g.iteration++
+
 	if g.lastFrame != nil {
 		if g.lastFrame.Bounds().Dx() != frame.Bounds().Dx() || g.lastFrame.Bounds().Dy() != frame.Bounds().Dy() {
 			g.lastFrame.Deallocate()

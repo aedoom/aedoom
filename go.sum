@@ -3,6 +3,8 @@ github.com/ALTree/bigfloat v0.0.0-20180506151649-b176f1e721fc/go.mod h1:9hy2NiNR
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/aedoom/gore v0.0.0-20250814124733-3ad17d1342cb h1:LZ3Xog4w8aR1LFIZ0cRCxa1HuIkw1Qdmtqk/0r1eZZE=
 github.com/aedoom/gore v0.0.0-20250814124733-3ad17d1342cb/go.mod h1:esaubJkcmWty1g+O1LodKD0x7wUoadzhayPiOvlruuM=
+github.com/aedoom/gore v0.0.0-20250814162957-0aa60a942480 h1:DmcOyAHl81VO3Uh2rfKfe9vYSOdhm9oRhtuDAMmPKjs=
+github.com/aedoom/gore v0.0.0-20250814162957-0aa60a942480/go.mod h1:esaubJkcmWty1g+O1LodKD0x7wUoadzhayPiOvlruuM=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/ebitengine/gomobile v0.0.0-20250329061421-6d0a8e981e4c h1:Ccgks2VROTr6bIm1FFxG2jT6P1DaCBMj8g/O9xbOQ08=

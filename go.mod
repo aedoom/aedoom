@@ -4,7 +4,7 @@ go 1.24.4
 
 toolchain go1.24.6
 
-replace github.com/AndreRenaud/gore => github.com/aedoom/gore v0.0.0-20250814124733-3ad17d1342cb
+replace github.com/AndreRenaud/gore => github.com/aedoom/gore v0.0.0-20250814162957-0aa60a942480
 
 require (
 	github.com/AndreRenaud/gore v0.0.0-20250811133552-a069bfa60ec6
