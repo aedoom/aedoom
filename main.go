@@ -5,7 +5,7 @@
 package main
 
 import (
-	"flag"
+	"embed"
 	"fmt"
 	"image"
 	"image/color"
@@ -22,6 +22,9 @@ import (
 	"github.com/AndreRenaud/gore"
 	"github.com/hajimehoshi/ebiten/v2"
 )
+
+//go:embed doom1.wad
+var DoomWad embed.FS
 
 const (
 	// B1 exponential decay of the rate for the first moment estimates
@@ -69,11 +72,6 @@ type Robot interface {
 	Do(action TypeAction)
 	Done()
 }
-
-var (
-	// FlagIwad iwad
-	FlagIwad = flag.String("iwad", "", "iwad")
-)
 
 // AutoEncoder is an autoencoder
 type AutoEncoder struct {
@@ -430,8 +428,6 @@ func Mind(frames chan Frame, do func(action TypeAction)) {
 }
 
 func main() {
-	flag.Parse()
-
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
@@ -510,7 +506,13 @@ func main() {
 		last = action
 	}
 	go func() {
-		gore.Run(game, []string{"-iwad", *FlagIwad})
+		file, err := DoomWad.Open("doom1.wad")
+		if err != nil {
+			panic(err)
+		}
+		defer file.Close()
+		gore.Wad = file
+		gore.Run(game, []string{"-iwad", "doom1.wad"})
 		game.terminating = true
 	}()
 	go Mind(game.frames, do)
