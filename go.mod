@@ -9,7 +9,7 @@ replace github.com/AndreRenaud/gore => github.com/aedoom/gore v0.0.0-20250814124
 require (
 	github.com/AndreRenaud/gore v0.0.0-20250811133552-a069bfa60ec6
 	github.com/hajimehoshi/ebiten/v2 v2.8.8
-	github.com/pointlander/gradient v0.0.0-20250414085240-4854a6c4ac3d
+	github.com/pointlander/gradient v0.0.0-20250814141955-1993bf0b47d3
 )
 
 require (
