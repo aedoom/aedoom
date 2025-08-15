@@ -225,7 +225,7 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 	}
 
 	indexes := rand.Perm((g.w - 1) * (g.h - 1))
-	indexes = indexes[:len(indexes)/64]
+	indexes = indexes[:len(indexes)/Scale]
 
 	type Vote struct {
 		Min     int
