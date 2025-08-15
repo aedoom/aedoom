@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <script src="wasm_exec.js"></script>
 <script>
+alert("After starting a game press 'k' to enable/disable the AI.")
 const go = new Go();
 WebAssembly.instantiateStreaming(fetch("aedoom.wasm"), go.importObject).then(result => {
 	go.run(result.instance);
