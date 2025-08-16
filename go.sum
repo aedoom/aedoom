@@ -7,6 +7,8 @@ github.com/aedoom/gore v0.0.0-20250814162957-0aa60a942480 h1:DmcOyAHl81VO3Uh2rfK
 github.com/aedoom/gore v0.0.0-20250814162957-0aa60a942480/go.mod h1:esaubJkcmWty1g+O1LodKD0x7wUoadzhayPiOvlruuM=
 github.com/aedoom/gore v0.0.0-20250815221357-40498c522aa9 h1:1v366rCLOYMT04TjMp7AGm1559lRavBPIe4LmZOaYFY=
 github.com/aedoom/gore v0.0.0-20250815221357-40498c522aa9/go.mod h1:esaubJkcmWty1g+O1LodKD0x7wUoadzhayPiOvlruuM=
+github.com/aedoom/gore v0.0.0-20250816154253-301b888b29a1 h1:pivMwHNu7mcYYb+W7cG1mlZG4ehixVynvUzAN9YqRco=
+github.com/aedoom/gore v0.0.0-20250816154253-301b888b29a1/go.mod h1:esaubJkcmWty1g+O1LodKD0x7wUoadzhayPiOvlruuM=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/ebitengine/gomobile v0.0.0-20250329061421-6d0a8e981e4c h1:Ccgks2VROTr6bIm1FFxG2jT6P1DaCBMj8g/O9xbOQ08=
