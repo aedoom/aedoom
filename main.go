@@ -277,7 +277,7 @@ func main() {
 	ebiten.SetWindowTitle("Gamepad (Ebitengine Demo)")
 	ebiten.SetFullscreen(false)
 	go func() {
-		gore.SetVirtualFileSystem(gore.VFSAdapter{FS: DoomWad})
+		gore.SetVirtualFileSystem(DoomWad)
 		gore.Run(game, []string{"-iwad", "doom1.wad"})
 		game.terminating = true
 	}()
