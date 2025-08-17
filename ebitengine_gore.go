@@ -116,7 +116,7 @@ func (g *DoomGame) Update() error {
 			g.events = append(g.events, event)
 		}
 
-		var mouseEvent gore.DoomEvent
+		/*var mouseEvent gore.DoomEvent
 		x, y := ebiten.CursorPosition()
 		mouseEvent.Mouse.XPos = float64(x) / float64(screenWidth)
 		mouseEvent.Mouse.YPos = float64(y) / float64(screenHeight)
@@ -127,7 +127,7 @@ func (g *DoomGame) Update() error {
 		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonRight) {
 			mouseEvent.Mouse.Button2 = true
 		}
-		g.events = append(g.events, mouseEvent)
+		g.events = append(g.events, mouseEvent)*/
 	}
 	if g.terminating {
 		return ebiten.Termination
