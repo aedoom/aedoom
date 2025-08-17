@@ -3,14 +3,8 @@ github.com/ALTree/bigfloat v0.0.0-20180506151649-b176f1e721fc/go.mod h1:9hy2NiNR
 github.com/AndreRenaud/gore v0.0.0-20250816232741-f6e38d1f5558 h1:U/g6wC7ardoNzgF6vnI2bPTh3YqMX/kq0W9FacF8HMg=
 github.com/AndreRenaud/gore v0.0.0-20250816232741-f6e38d1f5558/go.mod h1:4pHF5RZPRkwiSrgWDOMVFuGGPZv0HmgX+KTrK3YpCbY=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
-github.com/aedoom/gore v0.0.0-20250814124733-3ad17d1342cb h1:LZ3Xog4w8aR1LFIZ0cRCxa1HuIkw1Qdmtqk/0r1eZZE=
-github.com/aedoom/gore v0.0.0-20250814124733-3ad17d1342cb/go.mod h1:esaubJkcmWty1g+O1LodKD0x7wUoadzhayPiOvlruuM=
-github.com/aedoom/gore v0.0.0-20250814162957-0aa60a942480 h1:DmcOyAHl81VO3Uh2rfKfe9vYSOdhm9oRhtuDAMmPKjs=
-github.com/aedoom/gore v0.0.0-20250814162957-0aa60a942480/go.mod h1:esaubJkcmWty1g+O1LodKD0x7wUoadzhayPiOvlruuM=
-github.com/aedoom/gore v0.0.0-20250815221357-40498c522aa9 h1:1v366rCLOYMT04TjMp7AGm1559lRavBPIe4LmZOaYFY=
-github.com/aedoom/gore v0.0.0-20250815221357-40498c522aa9/go.mod h1:esaubJkcmWty1g+O1LodKD0x7wUoadzhayPiOvlruuM=
-github.com/aedoom/gore v0.0.0-20250816154253-301b888b29a1 h1:pivMwHNu7mcYYb+W7cG1mlZG4ehixVynvUzAN9YqRco=
-github.com/aedoom/gore v0.0.0-20250816154253-301b888b29a1/go.mod h1:esaubJkcmWty1g+O1LodKD0x7wUoadzhayPiOvlruuM=
+github.com/aedoom/go-dsp v0.0.0-20250817150659-bd110bab4486 h1:i5dTiHXyqvs9qNtltn559xKjrkm9A77az4XdjFQvZYk=
+github.com/aedoom/go-dsp v0.0.0-20250817150659-bd110bab4486/go.mod h1:qnuAss8I/yKwRsgnQKbFtBsqjdYaSy1yjn308M7Budc=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/ebitengine/gomobile v0.0.0-20250329061421-6d0a8e981e4c h1:Ccgks2VROTr6bIm1FFxG2jT6P1DaCBMj8g/O9xbOQ08=
@@ -64,8 +58,6 @@ golang.org/x/oauth2 v0.0.0-20180821212333-d2e6202438be/go.mod h1:N/0e6XlmueqKjAG
 golang.org/x/sync v0.0.0-20180314180146-1d60e4601c6f/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.0.0-20181108010431-42b317875d0f/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.0.0-20190423024810-112230192c58/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
-golang.org/x/sync v0.15.0 h1:KWH3jNZsfyT6xfAfKiz6MRNmd46ByHDYaZ7KSkCtdW8=
-golang.org/x/sync v0.15.0/go.mod h1:1dzgHSNfp02xaA81J2MS99Qcpr2w7fw1gpm99rleRqA=
 golang.org/x/sync v0.16.0 h1:ycBJEhp9p4vXvUZNszeOq0kGTPghopOL8q0fq3vstxw=
 golang.org/x/sync v0.16.0/go.mod h1:1dzgHSNfp02xaA81J2MS99Qcpr2w7fw1gpm99rleRqA=
 golang.org/x/sys v0.0.0-20180830151530-49385e6e1522/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=

@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"image"
 	"math"
+	"math/cmplx"
 	"math/rand"
 	"runtime"
 	"sync"
 
 	"github.com/AndreRenaud/gore"
+	"github.com/aedoom/go-dsp/fft"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
@@ -187,6 +189,21 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 		Output  []float32
 		Entropy float32
 	}
+	z := make([][]float64, height)
+	for y := range height {
+		z[y] = make([]float64, width)
+		for x := range width {
+			z[y][x] = float64(img.GrayAt(x, y).Y) / 255
+		}
+	}
+	zz, sum := fft.FFT2Real(z), 0.0
+	for y := range height {
+		for x := range width {
+			abs := cmplx.Abs(zz[y][x])
+			z[y][x] = abs
+			sum += abs
+		}
+	}
 	pixels := make([]Patch, 0, 8)
 	rng := g.rng
 	for y := 0; y < height-8; y += 8 {
@@ -195,8 +212,7 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 			var histogram [256]float32
 			for yy := 0; yy < 8; yy++ {
 				for xx := 0; xx < 8; xx++ {
-					g := img.GrayAt(x+xx, y+yy)
-					pixel := float32(g.Y) / 255
+					pixel := float32(z[y+yy][x+xx] / sum)
 					output[yy*8+xx] = pixel
 					pixel += float32(rng.NormFloat64() / 16)
 					if pixel < 0 {
@@ -206,6 +222,8 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 						pixel = 1
 					}
 					input[yy*8+xx] = pixel
+
+					g := img.GrayAt(x+xx, y+yy)
 					histogram[g.Y]++
 				}
 			}
@@ -261,10 +279,10 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 	for index < len(indexes) {
 		act := <-done
 		if act.Min >= 0 {
-			g.votes[act.Min] += act.Entropy
+			g.votes[act.Min] += 1 //act.Entropy
 		}
 		if act.Max >= 0 {
-			g.votes[act.Max] += act.Entropy
+			g.votes[act.Max] += 1 //act.Entropy
 		}
 		flight--
 
@@ -275,10 +293,10 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 	for range flight {
 		act := <-done
 		if act.Min >= 0 {
-			g.votes[act.Min] += act.Entropy
+			g.votes[act.Min] += 1 //act.Entropy
 		}
 		if act.Max >= 0 {
-			g.votes[act.Max] += act.Entropy
+			g.votes[act.Max] += 1 //act.Entropy
 		}
 	}
 	if g.iteration%30 == 0 {

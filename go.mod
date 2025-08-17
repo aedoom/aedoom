@@ -1,11 +1,10 @@
 module github.com/aedoom/aedoom
 
-go 1.24.4
-
-toolchain go1.24.6
+go 1.25.0
 
 require (
 	github.com/AndreRenaud/gore v0.0.0-20250816232741-f6e38d1f5558
+	github.com/aedoom/go-dsp v0.0.0-20250817150659-bd110bab4486
 	github.com/hajimehoshi/ebiten/v2 v2.8.8
 	github.com/pointlander/gradient v0.0.0-20250814141955-1993bf0b47d3
 )
