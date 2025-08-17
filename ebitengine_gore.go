@@ -205,39 +205,39 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 		}
 	}
 	pixels := make([]Patch, 0, 8)
-	rng := g.rng
+	//rng := g.rng
 	for y := 0; y < height-8; y += 8 {
 		for x := 0; x < width-8; x += 8 {
 			input, output := make([]float32, 8*8), make([]float32, 8*8)
-			var histogram [256]float32
+			//var histogram [256]float32
 			for yy := 0; yy < 8; yy++ {
 				for xx := 0; xx < 8; xx++ {
 					pixel := float32(z[y+yy][x+xx] / sum)
 					output[yy*8+xx] = pixel
-					pixel += float32(rng.NormFloat64() / 16)
+					/*pixel += float32(rng.NormFloat64() / 16)
 					if pixel < 0 {
 						pixel = 0
 					}
 					if pixel > 1 {
 						pixel = 1
-					}
+					}*/
 					input[yy*8+xx] = pixel
 
-					g := img.GrayAt(x+xx, y+yy)
-					histogram[g.Y]++
+					/*g := img.GrayAt(x+xx, y+yy)
+					histogram[g.Y]++*/
 				}
 			}
-			entropy := float32(0.0)
+			/*entropy := float32(0.0)
 			for _, value := range histogram {
 				if value == 0 {
 					continue
 				}
 				entropy += (value / (float32(8 * 8))) * float32(math.Log2(float64(value)/float64(8*8)))
-			}
+			}*/
 			pixels = append(pixels, Patch{
-				Input:   input,
-				Output:  output,
-				Entropy: -entropy,
+				Input:  input,
+				Output: output,
+				//Entropy: -entropy,
 			})
 		}
 	}
