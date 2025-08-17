@@ -211,7 +211,7 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 			//var histogram [256]float32
 			for yy := 0; yy < 8; yy++ {
 				for xx := 0; xx < 8; xx++ {
-					pixel := float32(z[y+yy][x+xx] / sum)
+					pixel := float32(z[y+yy][x+xx]/sum) + float32(img.GrayAt(x+xx, y+yy).Y)/255
 					output[yy*8+xx] = pixel
 					input[yy*8+xx] = pixel
 				}
@@ -221,11 +221,11 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 				Output: output,
 			})
 		}
-		rng := g.rng
+		/*rng := g.rng
 		for y := 0; y < height-8; y += 8 {
 			for x := 0; x < width-8; x += 8 {
 				input, output := make([]float32, 8*8), make([]float32, 8*8)
-				//var histogram [256]float32
+				var histogram [256]float32
 				for yy := 0; yy < 8; yy++ {
 					for xx := 0; xx < 8; xx++ {
 						pixel := float32(img.GrayAt(x+xx, y+yy).Y) / 255
@@ -239,24 +239,24 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 						}
 						input[yy*8+xx] = pixel
 
-						/*g := img.GrayAt(x+xx, y+yy)
-						histogram[g.Y]++*/
+						g := img.GrayAt(x+xx, y+yy)
+						histogram[g.Y]++
 					}
 				}
-				/*entropy := float32(0.0)
+				entropy := float32(0.0)
 				for _, value := range histogram {
 					if value == 0 {
 						continue
 					}
 					entropy += (value / (float32(8 * 8))) * float32(math.Log2(float64(value)/float64(8*8)))
-				}*/
+				}
 				pixels = append(pixels, Patch{
-					Input:  input,
-					Output: output,
-					//Entropy: -entropy,
+					Input:   input,
+					Output:  output,
+					Entropy: -entropy,
 				})
 			}
-		}
+		}*/
 	}
 
 	indexes := rand.Perm((g.w - 1) * (g.h - 1))
@@ -338,7 +338,7 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 			}
 		}
 		g.mind[learn].Auto.Encode(input, output, g.rng, &g.state)
-
+		action = learn
 		if g.autoMode && g.last != ActionCount {
 			var event gore.DoomEvent
 			event.Type = gore.Ev_keyup
