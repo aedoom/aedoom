@@ -8,4 +8,4 @@
 package main
 
 // Scale scales the number of go routines
-const Scale = 4
+const Scale = 16
