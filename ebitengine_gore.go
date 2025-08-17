@@ -325,7 +325,6 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 		for i, value := range g.votes {
 			input[i] = value / sum
 			output[i] = value / sum
-			g.votes[i] = 0.0
 		}
 		max, min, learn, action := float32(0.0), float32(math.MaxFloat32), TypeAction(0), TypeAction(0)
 		for i := range g.mind {
@@ -338,7 +337,6 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 			}
 		}
 		g.mind[learn].Auto.Encode(input, output, g.rng, &g.state)
-		action = learn
 		if g.autoMode && g.last != ActionCount {
 			var event gore.DoomEvent
 			event.Type = gore.Ev_keyup
@@ -380,6 +378,16 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 		pre := TypeAction(action)
 		for ii, value := range g.state {
 			g.state[ii], pre = pre, value
+		}
+	}
+
+	if g.iteration%(30*5) == 0 {
+		sum := float32(0.0)
+		for _, value := range g.votes {
+			sum += value
+		}
+		for i := range g.votes {
+			g.votes[i] /= sum
 		}
 	}
 
