@@ -36,6 +36,7 @@ type DoomGame struct {
 	auto      [][Actions]Auto
 	mind      [Actions]Auto
 	votes     [Actions]float32
+	counts    [Actions]float32
 	iteration int
 	state     State
 	w, h      int
@@ -211,7 +212,7 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 			//var histogram [256]float32
 			for yy := 0; yy < 8; yy++ {
 				for xx := 0; xx < 8; xx++ {
-					pixel := float32(z[y+yy][x+xx]/sum) + float32(img.GrayAt(x+xx, y+yy).Y)/255
+					pixel := /*float32(z[y+yy][x+xx]/sum) +*/ float32(img.GrayAt(x+xx, y+yy).Y) / 255
 					output[yy*8+xx] = pixel
 					input[yy*8+xx] = pixel
 				}
@@ -284,7 +285,7 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 		done <- Vote{
 			Min:     minIndex,
 			Max:     maxIndex,
-			Entropy: pixels[i].Entropy,
+			Entropy: max, //pixels[i].Entropy,
 		}
 	}
 	index, flight, cpus := 0, 0, runtime.NumCPU()
@@ -295,11 +296,12 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 	}
 	for index < len(indexes) {
 		act := <-done
-		if act.Min >= 0 {
-			g.votes[act.Min] += 1 //act.Entropy
-		}
+		//if act.Min >= 0 {
+		//	g.votes[act.Min] += 1 //act.Entropy
+		//}
 		if act.Max >= 0 {
-			g.votes[act.Max] += 1 //act.Entropy
+			g.votes[act.Max] += act.Entropy
+			g.counts[act.Max]++
 		}
 		flight--
 
@@ -309,15 +311,16 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 	}
 	for range flight {
 		act := <-done
-		if act.Min >= 0 {
-			g.votes[act.Min] += 1 //act.Entropy
-		}
+		//if act.Min >= 0 {
+		//	g.votes[act.Min] += 1 //act.Entropy
+		//}
 		if act.Max >= 0 {
-			g.votes[act.Max] += 1 //act.Entropy
+			g.votes[act.Max] += act.Entropy
+			g.counts[act.Max]++
 		}
 	}
 	if g.iteration%30 == 0 {
-		input, output := make([]float32, Actions), make([]float32, Actions)
+		/*input, output := make([]float32, Actions), make([]float32, Actions)
 		sum := float32(0.0)
 		for _, value := range g.votes {
 			sum += value
@@ -336,7 +339,18 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 				min, action = value, g.mind[i].Action
 			}
 		}
-		g.mind[learn].Auto.Encode(input, output, g.rng, &g.state)
+		g.mind[learn].Auto.Encode(input, output, g.rng, &g.state)*/
+		max, action := float32(0.0), TypeAction(0)
+		for i := range g.votes {
+			g.votes[i] /= g.counts[i]
+		}
+		for i, value := range g.votes {
+			if value > max {
+				max, action = value, TypeAction(i)
+			}
+			g.votes[i] = 0
+			g.counts[i] = 0
+		}
 		if g.autoMode && g.last != ActionCount {
 			var event gore.DoomEvent
 			event.Type = gore.Ev_keyup
@@ -381,7 +395,7 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 		}
 	}
 
-	if g.iteration%(30*5) == 0 {
+	/*if g.iteration%(30*5) == 0 {
 		sum := float32(0.0)
 		for _, value := range g.votes {
 			sum += value
@@ -389,7 +403,7 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 		for i := range g.votes {
 			g.votes[i] /= sum
 		}
-	}
+	}*/
 
 	g.iteration++
 
