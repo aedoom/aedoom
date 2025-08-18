@@ -320,8 +320,8 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 		}
 	}
 	if g.iteration%30 == 0 {
-		/*input, output := make([]float32, Actions), make([]float32, Actions)
-		sum := float32(0.0)
+		input, output := make([]float32, Actions), make([]float32, Actions)
+		/*sum := float32(0.0)
 		for _, value := range g.votes {
 			sum += value
 		}
@@ -340,7 +340,7 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 			}
 		}
 		g.mind[learn].Auto.Encode(input, output, g.rng, &g.state)*/
-		max, action := float32(0.0), TypeAction(0)
+		/*max, action := float32(0.0), TypeAction(0)
 		for i := range g.votes {
 			g.votes[i] /= g.counts[i]
 		}
@@ -348,6 +348,22 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 			if value > max {
 				max, action = value, TypeAction(i)
 			}
+			g.votes[i] = 0
+			g.counts[i] = 0
+		}*/
+		for i, value := range g.votes {
+			input[i] = value / g.counts[i]
+			output[i] = value / g.counts[i]
+		}
+		max, action := float32(0.0), TypeAction(0)
+		for i := range g.mind {
+			value := g.mind[i].Auto.Measure(input, output, &g.state)
+			if value > max {
+				max, action = value, g.mind[i].Action
+			}
+		}
+		g.mind[action].Auto.Encode(input, output, g.rng, &g.state)
+		for i := range g.votes {
 			g.votes[i] = 0
 			g.counts[i] = 0
 		}
