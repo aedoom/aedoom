@@ -270,9 +270,10 @@ func main() {
 	game := &DoomGame{}
 	game.rng = rand.New(rand.NewSource(1))
 	for i := range game.mind {
-		game.mind[i].Auto = NewAutoEncoder(6, true)
+		game.mind[i].Auto = NewAutoEncoder(2*6, true)
 		game.mind[i].Action = TypeAction(i)
 	}
+	game.input, game.output = make([]float32, 2*Actions), make([]float32, 2*Actions)
 	ebiten.SetWindowSize(screenWidth, screenHeight)
 	ebiten.SetWindowTitle("Gamepad (Ebitengine Demo)")
 	ebiten.SetFullscreen(false)
