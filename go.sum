@@ -5,6 +5,8 @@ github.com/AndreRenaud/gore v0.0.0-20250816232741-f6e38d1f5558/go.mod h1:4pHF5RZ
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/aedoom/go-dsp v0.0.0-20250817150659-bd110bab4486 h1:i5dTiHXyqvs9qNtltn559xKjrkm9A77az4XdjFQvZYk=
 github.com/aedoom/go-dsp v0.0.0-20250817150659-bd110bab4486/go.mod h1:qnuAss8I/yKwRsgnQKbFtBsqjdYaSy1yjn308M7Budc=
+github.com/alixaxel/pagerank v0.0.0-20200105181019-900657b89dcb h1:q45Ipu3ciM9kIe9XjdmHChrefQc3DBVgljoR7Ta0cYQ=
+github.com/alixaxel/pagerank v0.0.0-20200105181019-900657b89dcb/go.mod h1:e7Vic/xXDZAQ8ftWoLnVrXseAAvt54SVYrcirjCKcX0=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/ebitengine/gomobile v0.0.0-20250329061421-6d0a8e981e4c h1:Ccgks2VROTr6bIm1FFxG2jT6P1DaCBMj8g/O9xbOQ08=

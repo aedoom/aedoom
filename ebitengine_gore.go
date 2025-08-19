@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"image"
 	"math"
-	"math/cmplx"
+	//"math/cmplx"
 	"math/rand"
 	"runtime"
 	"sync"
 
 	"github.com/AndreRenaud/gore"
-	"github.com/aedoom/go-dsp/fft"
+	//"github.com/aedoom/go-dsp/fft"
+	"github.com/alixaxel/pagerank"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
@@ -44,6 +45,8 @@ type DoomGame struct {
 	last      TypeAction
 	input     []float32
 	output    []float32
+	index     int
+	circular  [8][Actions]float32
 }
 
 func (g *DoomGame) Update() error {
@@ -192,7 +195,7 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 		Output  []float32
 		Entropy float32
 	}
-	z := make([][]float64, height)
+	/*z := make([][]float64, height)
 	for y := range height {
 		z[y] = make([]float64, width)
 		for x := range width {
@@ -206,7 +209,7 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 			z[y][x] = abs
 			sum += abs
 		}
-	}
+	}*/
 	pixels := make([]Patch, 0, 8)
 	for y := 0; y < height-8; y += 8 {
 		for x := 0; x < width-8; x += 8 {
@@ -352,10 +355,33 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 			g.votes[i] = 0
 			g.counts[i] = 0
 		}*/
-		for i, value := range g.votes {
+		/*for i, value := range g.votes {
 			g.input[i], g.input[i+Actions] = value/g.counts[i], g.input[i]
 			g.output[i], g.output[i+Actions] = value/g.counts[i], g.output[i]
+		}*/
+		for i := range g.votes {
+			g.votes[i] /= g.counts[i]
 		}
+		copy(g.circular[g.index][:], g.votes[:])
+		g.index = (g.index + 1) % len(g.circular)
+		graph := pagerank.NewGraph()
+		for i := range g.circular {
+			for ii := range g.circular {
+				ab, aa, bb := 0.0, 0.0, 0.0
+				for iii, a := range g.circular[i] {
+					b := g.circular[ii][iii]
+					ab += float64(a * b)
+					aa += float64(a * a)
+					bb += float64(b * b)
+				}
+				cs := ab / (math.Sqrt(aa) * math.Sqrt(ab))
+				graph.Link(uint32(i), uint32(ii), cs)
+			}
+		}
+		graph.Rank(1.0, 1e-6, func(node uint32, rank float64) {
+			g.input[node] = float32(rank)
+			g.output[node] = float32(rank)
+		})
 		max, action := float32(0.0), TypeAction(0)
 		for i := range g.mind {
 			value := g.mind[i].Auto.Measure(g.input, g.output, &g.state)

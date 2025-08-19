@@ -270,10 +270,15 @@ func main() {
 	game := &DoomGame{}
 	game.rng = rand.New(rand.NewSource(1))
 	for i := range game.mind {
-		game.mind[i].Auto = NewAutoEncoder(2*6, true)
+		game.mind[i].Auto = NewAutoEncoder(8, true)
 		game.mind[i].Action = TypeAction(i)
 	}
-	game.input, game.output = make([]float32, 2*Actions), make([]float32, 2*Actions)
+	game.input, game.output = make([]float32, 8), make([]float32, 8)
+	for i := range game.circular {
+		for ii := range game.circular[i] {
+			game.circular[i][ii] = game.rng.Float32()
+		}
+	}
 	ebiten.SetWindowSize(screenWidth, screenHeight)
 	ebiten.SetWindowTitle("Gamepad (Ebitengine Demo)")
 	ebiten.SetFullscreen(false)
