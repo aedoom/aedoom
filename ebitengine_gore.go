@@ -370,15 +370,16 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 		graph := pagerank.NewGraph()
 		for i := range g.circular {
 			for ii := range g.circular {
+				x, y := (i+g.index)%len(g.circular), (ii+g.index)%len(g.circular)
 				ab, aa, bb := 0.0, 0.0, 0.0
-				for iii, a := range g.circular[i] {
-					b := g.circular[ii][iii]
+				for iii, a := range g.circular[x] {
+					b := g.circular[y][iii]
 					ab += float64(a * b)
 					aa += float64(a * a)
 					bb += float64(b * b)
 				}
 				cs := ab / (math.Sqrt(aa) * math.Sqrt(bb))
-				graph.Link(uint32(i), uint32(ii), cs)
+				graph.Link(uint32(x), uint32(y), cs)
 			}
 		}
 		graph.Rank(1.0, 1e-6, func(node uint32, rank float64) {
