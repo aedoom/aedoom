@@ -360,6 +360,9 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 			g.output[i], g.output[i+Actions] = value/g.counts[i], g.output[i]
 		}*/
 		for i := range g.votes {
+			if g.counts[i] == 0 {
+				continue
+			}
 			g.votes[i] /= g.counts[i]
 		}
 		copy(g.circular[g.index][:], g.votes[:])
@@ -374,7 +377,7 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 					aa += float64(a * a)
 					bb += float64(b * b)
 				}
-				cs := ab / (math.Sqrt(aa) * math.Sqrt(ab))
+				cs := ab / (math.Sqrt(aa) * math.Sqrt(bb))
 				graph.Link(uint32(i), uint32(ii), cs)
 			}
 		}
