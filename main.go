@@ -275,9 +275,11 @@ func main() {
 	}
 	game.input, game.output = make([]float32, 8), make([]float32, 8)
 	for i := range game.circular {
-		for ii := range game.circular[i] {
-			game.circular[i][ii] = game.rng.Float32()
+		m := NewMatrix(Actions, 1, make([]float32, Actions)...)
+		for ii := range m.Data {
+			m.Data[ii] = game.rng.Float32()
 		}
+		game.circular[i] = m
 	}
 	ebiten.SetWindowSize(screenWidth, screenHeight)
 	ebiten.SetWindowTitle("Gamepad (Ebitengine Demo)")

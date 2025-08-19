@@ -46,7 +46,7 @@ type DoomGame struct {
 	input     []float32
 	output    []float32
 	index     int
-	circular  [8][Actions]float32
+	circular  [8]Matrix[float32]
 }
 
 func (g *DoomGame) Update() error {
@@ -365,21 +365,14 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 			}
 			g.votes[i] /= g.counts[i]
 		}
-		copy(g.circular[g.index][:], g.votes[:])
+		copy(g.circular[g.index].Data, g.votes[:])
 		g.index = (g.index + 1) % len(g.circular)
 		graph := pagerank.NewGraph()
 		for i := range g.circular {
 			for ii := range g.circular {
 				x, y := (i+g.index)%len(g.circular), (ii+g.index)%len(g.circular)
-				ab, aa, bb := 0.0, 0.0, 0.0
-				for iii, a := range g.circular[x] {
-					b := g.circular[y][iii]
-					ab += float64(a * b)
-					aa += float64(a * a)
-					bb += float64(b * b)
-				}
-				cs := ab / (math.Sqrt(aa) * math.Sqrt(bb))
-				graph.Link(uint32(x), uint32(y), cs)
+				cs := g.circular[x].CS(g.circular[y])
+				graph.Link(uint32(x), uint32(y), float64(cs))
 			}
 		}
 		graph.Rank(1.0, 1e-6, func(node uint32, rank float64) {
