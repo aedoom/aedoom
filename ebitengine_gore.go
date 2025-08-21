@@ -4,13 +4,11 @@ import (
 	"fmt"
 	"image"
 	"math"
-	//"math/cmplx"
 	"math/rand"
 	"runtime"
 	"sync"
 
 	"github.com/AndreRenaud/gore"
-	//"github.com/aedoom/go-dsp/fft"
 	"github.com/alixaxel/pagerank"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -121,19 +119,6 @@ func (g *DoomGame) Update() error {
 			event.Key = doomKey
 			g.events = append(g.events, event)
 		}
-
-		/*var mouseEvent gore.DoomEvent
-		x, y := ebiten.CursorPosition()
-		mouseEvent.Mouse.XPos = float64(x) / float64(screenWidth)
-		mouseEvent.Mouse.YPos = float64(y) / float64(screenHeight)
-		mouseEvent.Type = gore.Ev_mouse
-		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
-			mouseEvent.Mouse.Button1 = true
-		}
-		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonRight) {
-			mouseEvent.Mouse.Button2 = true
-		}
-		g.events = append(g.events, mouseEvent)*/
 	}
 	if g.terminating {
 		return ebiten.Termination
@@ -195,29 +180,13 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 		Output  []float32
 		Entropy float32
 	}
-	/*z := make([][]float64, height)
-	for y := range height {
-		z[y] = make([]float64, width)
-		for x := range width {
-			z[y][x] = float64(img.GrayAt(x, y).Y) / 255
-		}
-	}
-	zz, sum := fft.FFT2Real(z), 0.0
-	for y := range height {
-		for x := range width {
-			abs := cmplx.Abs(zz[y][x])
-			z[y][x] = abs
-			sum += abs
-		}
-	}*/
 	pixels := make([]Patch, 0, 8)
 	for y := 0; y < height-8; y += 8 {
 		for x := 0; x < width-8; x += 8 {
 			input, output := make([]float32, 8*8), make([]float32, 8*8)
-			//var histogram [256]float32
 			for yy := 0; yy < 8; yy++ {
 				for xx := 0; xx < 8; xx++ {
-					pixel := /*float32(z[y+yy][x+xx]/sum) +*/ float32(img.GrayAt(x+xx, y+yy).Y) / 255
+					pixel := float32(img.GrayAt(x+xx, y+yy).Y) / 255
 					output[yy*8+xx] = pixel
 					input[yy*8+xx] = pixel
 				}
@@ -227,42 +196,6 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 				Output: output,
 			})
 		}
-		/*rng := g.rng
-		for y := 0; y < height-8; y += 8 {
-			for x := 0; x < width-8; x += 8 {
-				input, output := make([]float32, 8*8), make([]float32, 8*8)
-				var histogram [256]float32
-				for yy := 0; yy < 8; yy++ {
-					for xx := 0; xx < 8; xx++ {
-						pixel := float32(img.GrayAt(x+xx, y+yy).Y) / 255
-						output[yy*8+xx] = pixel
-						pixel += float32(rng.NormFloat64() / 16)
-						if pixel < 0 {
-							pixel = 0
-						}
-						if pixel > 1 {
-							pixel = 1
-						}
-						input[yy*8+xx] = pixel
-
-						g := img.GrayAt(x+xx, y+yy)
-						histogram[g.Y]++
-					}
-				}
-				entropy := float32(0.0)
-				for _, value := range histogram {
-					if value == 0 {
-						continue
-					}
-					entropy += (value / (float32(8 * 8))) * float32(math.Log2(float64(value)/float64(8*8)))
-				}
-				pixels = append(pixels, Patch{
-					Input:   input,
-					Output:  output,
-					Entropy: -entropy,
-				})
-			}
-		}*/
 	}
 
 	indexes := rand.Perm((g.w - 1) * (g.h - 1))
@@ -290,7 +223,7 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 		done <- Vote{
 			Min:     minIndex,
 			Max:     maxIndex,
-			Entropy: max, //pixels[i].Entropy,
+			Entropy: max,
 		}
 	}
 	index, flight, cpus := 0, 0, runtime.NumCPU()
@@ -301,9 +234,6 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 	}
 	for index < len(indexes) {
 		act := <-done
-		//if act.Min >= 0 {
-		//	g.votes[act.Min] += 1 //act.Entropy
-		//}
 		if act.Max >= 0 {
 			g.votes[act.Max] += act.Entropy
 			g.counts[act.Max]++
@@ -316,49 +246,12 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 	}
 	for range flight {
 		act := <-done
-		//if act.Min >= 0 {
-		//	g.votes[act.Min] += 1 //act.Entropy
-		//}
 		if act.Max >= 0 {
 			g.votes[act.Max] += act.Entropy
 			g.counts[act.Max]++
 		}
 	}
 	if g.iteration%30 == 0 {
-		/*sum := float32(0.0)
-		for _, value := range g.votes {
-			sum += value
-		}
-		for i, value := range g.votes {
-			input[i] = value / sum
-			output[i] = value / sum
-		}
-		max, min, learn, action := float32(0.0), float32(math.MaxFloat32), TypeAction(0), TypeAction(0)
-		for i := range g.mind {
-			value := g.mind[i].Auto.Measure(input, output, &g.state)
-			if value > max {
-				max, learn = value, g.mind[i].Action
-			}
-			if value < min {
-				min, action = value, g.mind[i].Action
-			}
-		}
-		g.mind[learn].Auto.Encode(input, output, g.rng, &g.state)*/
-		/*max, action := float32(0.0), TypeAction(0)
-		for i := range g.votes {
-			g.votes[i] /= g.counts[i]
-		}
-		for i, value := range g.votes {
-			if value > max {
-				max, action = value, TypeAction(i)
-			}
-			g.votes[i] = 0
-			g.counts[i] = 0
-		}*/
-		/*for i, value := range g.votes {
-			g.input[i], g.input[i+Actions] = value/g.counts[i], g.input[i]
-			g.output[i], g.output[i+Actions] = value/g.counts[i], g.output[i]
-		}*/
 		for i := range g.votes {
 			if g.counts[i] == 0 {
 				continue
@@ -434,17 +327,6 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 			g.state[ii], pre = pre, value
 		}
 	}
-
-	/*if g.iteration%(30*5) == 0 {
-		sum := float32(0.0)
-		for _, value := range g.votes {
-			sum += value
-		}
-		for i := range g.votes {
-			g.votes[i] /= sum
-		}
-	}*/
-
 	g.iteration++
 
 	if g.lastFrame != nil {
