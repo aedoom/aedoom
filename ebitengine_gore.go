@@ -47,6 +47,15 @@ type DoomGame struct {
 	circular  [8]Matrix[float32]
 }
 
+var ActionMap = map[TypeAction]uint8{
+	ActionLeft:     gore.KEY_LEFTARROW1,
+	ActionRight:    gore.KEY_RIGHTARROW1,
+	ActionForward:  gore.KEY_UPARROW1,
+	ActionBackward: gore.KEY_DOWNARROW1,
+	ActionNone:     0,
+	ActionActivate: gore.KEY_USE1,
+}
+
 func (g *DoomGame) Update() error {
 	keys := map[ebiten.Key]uint8{
 		ebiten.KeySpace:     gore.KEY_USE1,
@@ -89,19 +98,7 @@ func (g *DoomGame) Update() error {
 		if !g.autoMode && g.last != ActionCount {
 			var event gore.DoomEvent
 			event.Type = gore.Ev_keyup
-			switch g.last {
-			case ActionLeft:
-				event.Key = gore.KEY_LEFTARROW1
-			case ActionRight:
-				event.Key = gore.KEY_RIGHTARROW1
-			case ActionForward:
-				event.Key = gore.KEY_UPARROW1
-			case ActionBackward:
-				event.Key = gore.KEY_DOWNARROW1
-			case ActionNone:
-			case ActionActivate:
-				event.Key = gore.KEY_USE1
-			}
+			event.Key = ActionMap[g.last]
 			g.events = append(g.events, event)
 			g.last = ActionCount
 		}
@@ -287,37 +284,13 @@ func (g *DoomGame) DrawFrame(frame *image.RGBA) {
 		if g.autoMode && g.last != ActionCount {
 			var event gore.DoomEvent
 			event.Type = gore.Ev_keyup
-			switch g.last {
-			case ActionLeft:
-				event.Key = gore.KEY_LEFTARROW1
-			case ActionRight:
-				event.Key = gore.KEY_RIGHTARROW1
-			case ActionForward:
-				event.Key = gore.KEY_UPARROW1
-			case ActionBackward:
-				event.Key = gore.KEY_DOWNARROW1
-			case ActionNone:
-			case ActionActivate:
-				event.Key = gore.KEY_USE1
-			}
+			event.Key = ActionMap[g.last]
 			g.events = append(g.events, event)
 		}
 		if g.autoMode {
 			var event gore.DoomEvent
 			event.Type = gore.Ev_keydown
-			switch action {
-			case ActionLeft:
-				event.Key = gore.KEY_LEFTARROW1
-			case ActionRight:
-				event.Key = gore.KEY_RIGHTARROW1
-			case ActionForward:
-				event.Key = gore.KEY_UPARROW1
-			case ActionBackward:
-				event.Key = gore.KEY_DOWNARROW1
-			case ActionNone:
-			case ActionActivate:
-				event.Key = gore.KEY_USE1
-			}
+			event.Key = ActionMap[action]
 			g.events = append(g.events, event)
 		}
 		g.last = action
