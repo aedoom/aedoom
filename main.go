@@ -72,6 +72,11 @@ type Robot interface {
 	Done()
 }
 
+// Controller is a robot controller
+type Controller interface {
+	Process(img Frame) (bool, TypeAction)
+}
+
 // AutoEncoder is an autoencoder
 type AutoEncoder struct {
 	Set       tf32.Set
@@ -268,19 +273,7 @@ func main() {
 	}()
 
 	game := &DoomGame{}
-	game.rng = rand.New(rand.NewSource(1))
-	for i := range game.mind {
-		game.mind[i].Auto = NewAutoEncoder(8, true)
-		game.mind[i].Action = TypeAction(i)
-	}
-	game.input, game.output = make([]float32, 8), make([]float32, 8)
-	for i := range game.circular {
-		m := NewMatrix(Actions, 1, make([]float32, Actions)...)
-		for ii := range m.Data {
-			m.Data[ii] = game.rng.Float32()
-		}
-		game.circular[i] = m
-	}
+	game.controller = NewAE()
 	ebiten.SetWindowSize(screenWidth, screenHeight)
 	ebiten.SetWindowTitle("Gamepad (Ebitengine Demo)")
 	ebiten.SetFullscreen(false)
