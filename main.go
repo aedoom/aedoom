@@ -6,6 +6,7 @@ package main
 
 import (
 	"embed"
+	"flag"
 	"fmt"
 	"image"
 	"image/color"
@@ -264,7 +265,14 @@ func (a *AutoEncoder) Encode(input, output []float32, rng *rand.Rand, state *Sta
 	return l
 }
 
+var (
+	// FlagMode is the ai to use
+	FlagMode = flag.String("mode", "ae", "ai mode to use")
+)
+
 func main() {
+	flag.Parse()
+
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
@@ -273,7 +281,11 @@ func main() {
 	}()
 
 	game := &DoomGame{}
-	game.controller = NewMorpheus() //NewAE()
+	if *FlagMode == "ae" {
+		game.controller = NewAE()
+	} else {
+		game.controller = NewMorpheus()
+	}
 	ebiten.SetWindowSize(screenWidth, screenHeight)
 	ebiten.SetWindowTitle("Gamepad (Ebitengine Demo)")
 	ebiten.SetFullscreen(false)
