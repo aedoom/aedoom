@@ -9,9 +9,24 @@ import (
 	"math"
 	"math/rand"
 	"runtime"
+	"sort"
 
 	"github.com/alixaxel/pagerank"
 )
+
+// Vote is a vote
+type Vote struct {
+	Min     int
+	Max     int
+	Entropy float32
+	Index   int
+}
+
+// Genome is a genome
+type Genome struct {
+	Index int
+	Votes int
+}
 
 // AE is an autoencoder model
 type AE struct {
@@ -27,6 +42,8 @@ type AE struct {
 	output    []float32
 	index     int
 	circular  [8]Matrix[float32]
+	acts      [Actions][]Vote
+	genome    []Genome
 }
 
 // NewAE creates a new ae model
@@ -89,12 +106,12 @@ func (a *AE) Process(img Frame) (bool, TypeAction) {
 
 	indexes := rand.Perm((a.w - 1) * (a.h - 1))
 	indexes = indexes[:len(indexes)/Scale]
-
-	type Vote struct {
-		Min     int
-		Max     int
-		Entropy float32
+	if len(a.genome) >= 64 {
+		for i := range a.genome[:64] {
+			indexes = append(indexes, a.genome[i].Index)
+		}
 	}
+
 	done := make(chan Vote, 8)
 	measure := func(i int, seed int64) {
 		rng := rand.New(rand.NewSource(seed))
@@ -113,6 +130,7 @@ func (a *AE) Process(img Frame) (bool, TypeAction) {
 			Min:     minIndex,
 			Max:     maxIndex,
 			Entropy: max,
+			Index:   i,
 		}
 	}
 	index, flight, cpus := 0, 0, runtime.NumCPU()
@@ -127,6 +145,7 @@ func (a *AE) Process(img Frame) (bool, TypeAction) {
 			a.votes[act.Max] += act.Entropy
 			a.counts[act.Max]++
 		}
+		a.acts[act.Max] = append(a.acts[act.Max], act)
 		flight--
 
 		go measure(indexes[index], a.rng.Int63())
@@ -139,6 +158,7 @@ func (a *AE) Process(img Frame) (bool, TypeAction) {
 			a.votes[act.Max] += act.Entropy
 			a.counts[act.Max]++
 		}
+		a.acts[act.Max] = append(a.acts[act.Max], act)
 	}
 	a.iteration++
 	if a.iteration%30 == 0 {
@@ -170,6 +190,16 @@ func (a *AE) Process(img Frame) (bool, TypeAction) {
 			}
 		}
 		a.mind[action].Auto.Encode(a.input, a.output, a.rng, &a.state)
+		a.genome = make([]Genome, a.w*a.h)
+		for i := range a.genome {
+			a.genome[i].Index = i
+		}
+		for _, value := range a.acts[action] {
+			a.genome[value.Index].Votes++
+		}
+		sort.Slice(a.genome, func(i, j int) bool {
+			return a.genome[i].Votes > a.genome[i].Votes
+		})
 		for i := range a.votes {
 			a.votes[i] = 0
 			a.counts[i] = 0
@@ -178,6 +208,7 @@ func (a *AE) Process(img Frame) (bool, TypeAction) {
 		for ii, value := range a.state {
 			a.state[ii], pre = pre, value
 		}
+		a.acts = [Actions][]Vote{}
 		return true, action
 	}
 	return false, ActionCount
