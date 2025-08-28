@@ -182,6 +182,7 @@ func (m *Morpheus) Process(img Frame) (bool, TypeAction) {
 		done <- v
 	}
 	index, flight, cpus := 0, 0, runtime.NumCPU()
+	votes := make([]Vote, 0, 8)
 	for index < len(indexes) && flight < cpus {
 		go process(indexes[index], m.rng.Int63())
 		flight++
@@ -192,6 +193,7 @@ func (m *Morpheus) Process(img Frame) (bool, TypeAction) {
 		if v.V >= 0 {
 			m.votes[v.V] += 1
 		}
+		votes = append(votes, v)
 		flight--
 
 		go process(indexes[index], m.rng.Int63())
@@ -202,6 +204,61 @@ func (m *Morpheus) Process(img Frame) (bool, TypeAction) {
 		v := <-done
 		if v.V >= 0 {
 			m.votes[v.V] += 1
+		}
+		votes = append(votes, v)
+	}
+	for i := range indexes {
+		x, y := indexes[i]/m.w, indexes[i]%m.h
+		switch votes[i].V {
+		case 7:
+			if y == 0 {
+				break
+			}
+			m.state[indexes[i]], m.state[(y-1)*m.w+x] =
+				m.state[(y-1)*m.w+x], m.state[indexes[i]]
+		case 8:
+			if y == 0 || x == m.w-1 {
+				break
+			}
+			m.state[indexes[i]], m.state[(y-1)*m.w+x+1] =
+				m.state[(y-1)*m.w+x+1], m.state[indexes[i]]
+		case 9:
+			if x == m.w-1 {
+				break
+			}
+			m.state[indexes[i]], m.state[y*m.w+x+1] =
+				m.state[y*m.w+x+1], m.state[indexes[i]]
+		case 10:
+			if y == m.h-1 || x == m.w-1 {
+				break
+			}
+			m.state[indexes[i]], m.state[(y+1)*m.w+x+1] =
+				m.state[(y+1)*m.w+x+1], m.state[indexes[i]]
+		case 11:
+			if y == m.h-1 {
+				break
+			}
+			m.state[indexes[i]], m.state[(y+1)*m.w+x] =
+				m.state[(y+1)*m.w+x], m.state[indexes[i]]
+		case 12:
+			if y == m.h-1 || x == 0 {
+				break
+			}
+			m.state[indexes[i]], m.state[(y+1)*m.w+x-1] =
+				m.state[(y+1)*m.w+x-1], m.state[indexes[i]]
+		case 13:
+			if x == 0 {
+				break
+			}
+			m.state[indexes[i]], m.state[y*m.w+x-1] =
+				m.state[y*m.w+x-1], m.state[indexes[i]]
+		case 14:
+			if y == 0 || x == 0 {
+				break
+			}
+			m.state[indexes[i]], m.state[(y-1)*m.w+x-1] =
+				m.state[(y-1)*m.w+x-1], m.state[indexes[i]]
+		case 15:
 		}
 	}
 	m.context = (m.context + 1) % 16
