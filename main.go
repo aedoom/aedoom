@@ -131,9 +131,10 @@ func NewAutoEncoder(size int, markov bool) *AutoEncoder {
 			}
 			continue
 		}
+		w.X = w.X[:cap(w.X)]
 		factor := math.Sqrt(2.0 / float64(w.S[0]))
-		for range cap(w.X) {
-			w.X = append(w.X, float32(a.Rng.NormFloat64()*factor))
+		for i := range w.X {
+			w.X[i] = float32(a.Rng.NormFloat64() * factor)
 		}
 		w.States = make([][]float32, StateTotal)
 		for ii := range w.States {
@@ -143,6 +144,34 @@ func NewAutoEncoder(size int, markov bool) *AutoEncoder {
 
 	a.Set = set
 	return &a
+}
+
+// Reset resets the autoencoder
+func (a *AutoEncoder) Reset() {
+	set := a.Set
+	for i := range set.Weights {
+		w := set.Weights[i]
+		if strings.HasPrefix(w.N, "b") {
+			for ii := range w.X {
+				w.X[ii] = 0
+			}
+			for ii := range w.States {
+				for iii := range w.States[ii] {
+					w.States[ii][iii] = 0
+				}
+			}
+			continue
+		}
+		factor := math.Sqrt(2.0 / float64(w.S[0]))
+		for ii := range w.X {
+			w.X[ii] = float32(a.Rng.NormFloat64() * factor)
+		}
+		for ii := range w.States {
+			for iii := range w.States[ii] {
+				w.States[ii][iii] = 0
+			}
+		}
+	}
 }
 
 // Measure measures the loss of a single input

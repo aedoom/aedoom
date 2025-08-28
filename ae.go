@@ -200,6 +200,18 @@ func (a *AE) Process(img Frame) (bool, TypeAction) {
 		sort.Slice(a.genome, func(i, j int) bool {
 			return a.genome[i].Votes > a.genome[i].Votes
 		})
+		save := make(map[int]bool)
+		for i := range a.genome[:512] {
+			save[a.genome[i].Index] = true
+		}
+		for i := range a.auto {
+			if save[i] {
+				continue
+			}
+			for ii := range a.auto[i] {
+				a.auto[i][ii].Auto.Reset()
+			}
+		}
 		for i := range a.votes {
 			a.votes[i] = 0
 			a.counts[i] = 0
