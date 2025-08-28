@@ -406,6 +406,9 @@ func softmax[T Float](values []T) {
 // CS implements cosine similarity
 func (m Matrix[T]) CS(n Matrix[T]) T {
 	ab, aa, bb := dot(m.Data, n.Data), dot(m.Data, m.Data), dot(n.Data, n.Data)
+	if aa == 0 || bb == 0 {
+		return 0
+	}
 	return ab / (T(math.Sqrt(float64(aa))) * T(math.Sqrt(float64(bb))))
 }
 

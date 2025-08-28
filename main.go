@@ -273,7 +273,7 @@ func main() {
 	}()
 
 	game := &DoomGame{}
-	game.controller = NewAE()
+	game.controller = NewMorpheus() //NewAE()
 	ebiten.SetWindowSize(screenWidth, screenHeight)
 	ebiten.SetWindowTitle("Gamepad (Ebitengine Demo)")
 	ebiten.SetFullscreen(false)
