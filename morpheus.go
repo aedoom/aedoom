@@ -13,15 +13,18 @@ import (
 	"github.com/alixaxel/pagerank"
 )
 
+// Width is the width of the morpheus model
+const Width = 16
+
 // Morpheus is the morpheus model
 type Morpheus struct {
 	rng       *rand.Rand
 	iteration int
 	w, h      int
 	context   int
-	buffers   [][16][16]byte
+	buffers   [][Width][Width]byte
 	state     []Matrix[float64]
-	votes     [16]int
+	votes     [Width]int
 }
 
 // NewMorpheus creates a new morpheus model
@@ -38,7 +41,7 @@ func (m *Morpheus) Process(img Frame) (bool, TypeAction) {
 	if m.buffers == nil {
 		w, h := width/4, height/4
 		fmt.Println(width, height, w, h, w*h)
-		m.buffers = make([][16][16]byte, w*h)
+		m.buffers = make([][Width][Width]byte, w*h)
 		for i := range m.buffers {
 			for ii := range m.buffers[i] {
 				for iii := range m.buffers[i][ii] {
@@ -48,7 +51,7 @@ func (m *Morpheus) Process(img Frame) (bool, TypeAction) {
 		}
 		m.state = make([]Matrix[float64], w*h)
 		for i := range m.state {
-			m.state[i] = NewMatrix(16, 16, make([]float64, 16*16)...)
+			m.state[i] = NewMatrix(Width, Width, make([]float64, Width*Width)...)
 			for ii := range m.state[i].Data {
 				m.state[i].Data[ii] = m.rng.Float64()
 			}
@@ -78,7 +81,7 @@ func (m *Morpheus) Process(img Frame) (bool, TypeAction) {
 		rng := rand.New(rand.NewSource(seed))
 		var v Vote
 		a := m.state[i]
-		b := NewMatrix(16, 16, make([]float64, 16*16)...)
+		b := NewMatrix(Width, Width, make([]float64, Width*Width)...)
 		idx := 0
 		for ii := range m.buffers[i] {
 			for iii := range m.buffers[i][ii] {
@@ -90,7 +93,7 @@ func (m *Morpheus) Process(img Frame) (bool, TypeAction) {
 		const iterations = 8
 		results := make([][]float64, iterations)
 		for iteration := range iterations {
-			x, y := NewMatrix(16, 16, make([]float64, 16*16)...), NewMatrix(16, 16, make([]float64, 16*16)...)
+			x, y := NewMatrix(Width, Width, make([]float64, Width*Width)...), NewMatrix(Width, Width, make([]float64, Width*Width)...)
 			index := 0
 			for range x.Rows {
 				for range x.Cols {
@@ -105,9 +108,9 @@ func (m *Morpheus) Process(img Frame) (bool, TypeAction) {
 			b := y.MulT(b)
 			graph := pagerank.NewGraph()
 			for ii := range a.Rows {
-				x := NewMatrix(16, 1, a.Data[ii*a.Cols:(ii+1)*a.Cols]...)
+				x := NewMatrix(Width, 1, a.Data[ii*a.Cols:(ii+1)*a.Cols]...)
 				for iii := range b.Rows {
-					y := NewMatrix(16, 1, b.Data[iii*b.Cols:(iii+1)*b.Cols]...)
+					y := NewMatrix(Width, 1, b.Data[iii*b.Cols:(iii+1)*b.Cols]...)
 					cs := x.CS(y)
 					if cs < 0 {
 						cs = -cs
@@ -118,13 +121,13 @@ func (m *Morpheus) Process(img Frame) (bool, TypeAction) {
 					graph.Link(uint32(ii), uint32(iii), cs)
 				}
 			}
-			result := make([]float64, 16)
+			result := make([]float64, Width)
 			graph.Rank(1.0, 1e-6, func(node uint32, rank float64) {
 				result[node] = rank
 			})
 			results[iteration] = result
 		}
-		avg := make([]float64, 16)
+		avg := make([]float64, Width)
 		for _, result := range results {
 			for i, value := range result {
 				avg[i] += value
@@ -134,7 +137,7 @@ func (m *Morpheus) Process(img Frame) (bool, TypeAction) {
 			avg[i] = value / float64(iterations)
 		}
 
-		stddev := make([]float64, 16)
+		stddev := make([]float64, Width)
 		for _, result := range results {
 			for i, value := range result {
 				diff := value - avg[i]
@@ -152,9 +155,9 @@ func (m *Morpheus) Process(img Frame) (bool, TypeAction) {
 			}
 		}
 
-		cov := make([][]float64, 16)
+		cov := make([][]float64, Width)
 		for i := range cov {
-			cov[i] = make([]float64, 16)
+			cov[i] = make([]float64, Width)
 		}
 		for _, measures := range results {
 			for i, v := range measures {
@@ -182,7 +185,7 @@ func (m *Morpheus) Process(img Frame) (bool, TypeAction) {
 		done <- v
 	}
 	index, flight, cpus := 0, 0, runtime.NumCPU()
-	votes := make([]Vote, 0, 8)
+	votes := make([]Vote, 0, len(indexes))
 	for index < len(indexes) && flight < cpus {
 		go process(indexes[index], m.rng.Int63())
 		flight++
@@ -261,7 +264,7 @@ func (m *Morpheus) Process(img Frame) (bool, TypeAction) {
 		case 15:
 		}
 	}
-	m.context = (m.context + 1) % 16
+	m.context = (m.context + 1) % Width
 	m.iteration++
 	if m.iteration%30 == 0 {
 		max, index := 0, TypeAction(0)
