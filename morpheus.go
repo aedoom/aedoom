@@ -9,9 +9,16 @@ import (
 	"math"
 	"math/rand"
 	"runtime"
+	"sort"
 
 	"github.com/alixaxel/pagerank"
 )
+
+// GVote is a genome vote
+type GVote struct {
+	V     int
+	Index int
+}
 
 // Width is the width of the morpheus model
 const Width = 16
@@ -25,12 +32,15 @@ type Morpheus struct {
 	buffers   [][Width][Width]byte
 	state     []Matrix[float64]
 	votes     [Width]int
+	acts      [Width][]GVote
+	save      map[int]bool
 }
 
 // NewMorpheus creates a new morpheus model
 func NewMorpheus() *Morpheus {
 	morpheus := Morpheus{}
 	morpheus.rng = rand.New(rand.NewSource(1))
+	morpheus.save = make(map[int]bool)
 	return &morpheus
 }
 
@@ -73,13 +83,11 @@ func (m *Morpheus) Process(img Frame) (bool, TypeAction) {
 	indexes := rand.Perm((m.w - 1) * (m.h - 1))
 	indexes = indexes[:len(indexes)/(4*Scale)]
 
-	type Vote struct {
-		V int
-	}
-	done := make(chan Vote, 8)
+	done := make(chan GVote, 8)
 	process := func(i int, seed int64) {
 		rng := rand.New(rand.NewSource(seed))
-		var v Vote
+		var v GVote
+		v.Index = i
 		a := m.state[i]
 		b := NewMatrix(Width, Width, make([]float64, Width*Width)...)
 		idx := 0
@@ -185,7 +193,7 @@ func (m *Morpheus) Process(img Frame) (bool, TypeAction) {
 		done <- v
 	}
 	index, flight, cpus := 0, 0, runtime.NumCPU()
-	votes := make([]Vote, 0, len(indexes))
+	votes := make([]GVote, 0, len(indexes))
 	for index < len(indexes) && flight < cpus {
 		go process(indexes[index], m.rng.Int63())
 		flight++
@@ -197,6 +205,7 @@ func (m *Morpheus) Process(img Frame) (bool, TypeAction) {
 			m.votes[v.V] += 1
 		}
 		votes = append(votes, v)
+		m.acts[v.V] = append(m.acts[v.V], v)
 		flight--
 
 		go process(indexes[index], m.rng.Int63())
@@ -209,8 +218,12 @@ func (m *Morpheus) Process(img Frame) (bool, TypeAction) {
 			m.votes[v.V] += 1
 		}
 		votes = append(votes, v)
+		m.acts[v.V] = append(m.acts[v.V], v)
 	}
 	for i := range indexes {
+		if !m.save[indexes[i]] {
+			continue
+		}
 		x, y := indexes[i]/m.w, indexes[i]%m.h
 		switch votes[i].V {
 		case 7:
@@ -273,9 +286,24 @@ func (m *Morpheus) Process(img Frame) (bool, TypeAction) {
 				max, index = m.votes[i+1], i
 			}
 		}
+		genome := make([]Genome, m.w*m.h)
+		for i := range genome {
+			genome[i].Index = i
+		}
+		for _, value := range m.acts[index] {
+			genome[value.Index].Votes++
+		}
+		sort.Slice(genome, func(i, j int) bool {
+			return genome[i].Votes > genome[i].Votes
+		})
+		m.save = make(map[int]bool)
+		for i := range genome[:512] {
+			m.save[genome[i].Index] = true
+		}
 		for i := range m.votes {
 			m.votes[i] = 0
 		}
+		m.acts = [Width][]GVote{}
 		return true, index
 	}
 	return false, ActionCount
