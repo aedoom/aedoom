@@ -290,7 +290,7 @@ func (m *Morpheus) Process(img Frame) (bool, TypeAction) {
 		for i := range genome {
 			genome[i].Index = i
 		}
-		for _, value := range m.acts[index] {
+		for _, value := range m.acts[index+1] {
 			genome[value.Index].Votes++
 		}
 		sort.Slice(genome, func(i, j int) bool {
