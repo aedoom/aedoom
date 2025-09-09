@@ -197,7 +197,7 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 				min, v.V = value, i
 			}
 		}
-		v.V = int(m.actions[i][i])
+		v.V = int(m.actions[i][v.V])
 		done <- v
 	}
 	index, flight, cpus := 0, 0, runtime.NumCPU()
