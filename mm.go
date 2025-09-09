@@ -30,6 +30,7 @@ type MorpheusMarkov struct {
 	w, h      int
 	context   int
 	buffers   [][MMWidth][MMWidth]byte
+	actions   [][MMWidth]TypeAction
 	votes     [MMWidth]int
 	acts      [MMWidth][]MMVote
 	index     TypeAction
@@ -57,6 +58,12 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 				}
 			}
 		}
+		m.actions = make([][MMWidth]TypeAction, w*h)
+		for i := range m.actions {
+			for ii := range m.actions[i] {
+				m.actions[i][ii] = TypeAction(m.rng.Intn(Actions))
+			}
+		}
 		m.w, m.h = w, h
 	}
 	index := 0
@@ -71,6 +78,7 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 				m.buffers[index][m.context][3*4+3+i] = 0
 			}
 			m.buffers[index][m.context][3*4+3+m.index] = 1
+			m.actions[index][m.context] = m.index
 			index++
 		}
 	}
@@ -189,7 +197,7 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 				min, v.V = value, i
 			}
 		}
-
+		v.V = int(m.actions[i][i])
 		done <- v
 	}
 	index, flight, cpus := 0, 0, runtime.NumCPU()
