@@ -48,6 +48,7 @@ type AE struct {
 
 // NewAE creates a new ae model
 func NewAE() *AE {
+	fmt.Println("Autoencoder Mode")
 	ae := AE{}
 	ae.rng = rand.New(rand.NewSource(1))
 	for i := range ae.mind {

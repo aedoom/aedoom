@@ -38,6 +38,7 @@ type Morpheus struct {
 
 // NewMorpheus creates a new morpheus model
 func NewMorpheus() *Morpheus {
+	fmt.Println("Morpheus Mode")
 	morpheus := Morpheus{}
 	morpheus.rng = rand.New(rand.NewSource(1))
 	morpheus.save = make(map[int]bool)

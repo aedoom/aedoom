@@ -38,6 +38,7 @@ type MorpheusMarkov struct {
 
 // NewMorpheusMarkov creates a new morpheus markov model
 func NewMorpheusMarkov() *Morpheus {
+	fmt.Println("Morpheus Markov Mode")
 	morpheus := Morpheus{}
 	morpheus.rng = rand.New(rand.NewSource(1))
 	return &morpheus
