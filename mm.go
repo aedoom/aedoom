@@ -21,7 +21,7 @@ type MMVote struct {
 }
 
 // MMWidth is the width of the morpheus model
-const MMWidth = 16
+const MMWidth = 16 + Actions
 
 // Morpheus is the morpheus model
 type MorpheusMarkov struct {
@@ -30,17 +30,15 @@ type MorpheusMarkov struct {
 	w, h      int
 	context   int
 	buffers   [][MMWidth][MMWidth]byte
-	state     []Matrix[float64]
 	votes     [MMWidth]int
 	acts      [MMWidth][]MMVote
-	save      map[int]bool
+	index     TypeAction
 }
 
 // NewMorpheusMarkov creates a new morpheus markov model
 func NewMorpheusMarkov() *Morpheus {
 	morpheus := Morpheus{}
 	morpheus.rng = rand.New(rand.NewSource(1))
-	morpheus.save = make(map[int]bool)
 	return &morpheus
 }
 
@@ -59,13 +57,6 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 				}
 			}
 		}
-		m.state = make([]Matrix[float64], w*h)
-		for i := range m.state {
-			m.state[i] = NewMatrix(MMWidth, MMWidth, make([]float64, MMWidth*MMWidth)...)
-			for ii := range m.state[i].Data {
-				m.state[i].Data[ii] = m.rng.Float64()
-			}
-		}
 		m.w, m.h = w, h
 	}
 	index := 0
@@ -76,6 +67,10 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 					m.buffers[index][m.context][yy*4+xx] = img.GrayAt(x+xx, y+yy).Y
 				}
 			}
+			for i := range Actions {
+				m.buffers[index][m.context][3*4+3+i] = 0
+			}
+			m.buffers[index][m.context][3*4+3+m.index] = 1
 			index++
 		}
 	}
@@ -88,11 +83,12 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 		rng := rand.New(rand.NewSource(seed))
 		var v MMVote
 		v.Index = i
-		a := m.state[i]
+		a := NewMatrix(MMWidth, MMWidth, make([]float64, MMWidth*MMWidth)...)
 		b := NewMatrix(MMWidth, MMWidth, make([]float64, MMWidth*MMWidth)...)
 		idx := 0
 		for ii := range m.buffers[i] {
 			for iii := range m.buffers[i][ii] {
+				a.Data[idx] = float64(m.buffers[i][ii][iii]) / 255.0
 				b.Data[idx] = float64(m.buffers[i][ii][iii]) / 255.0
 				idx++
 			}
@@ -156,13 +152,6 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 			stddev[i] = math.Sqrt(value / float64(iterations))
 		}
 
-		min := float64(math.MaxFloat64)
-		for i, value := range stddev {
-			if value < min {
-				min, v.V = value, i
-			}
-		}
-
 		cov := make([][]float64, MMWidth)
 		for i := range cov {
 			cov[i] = make([]float64, MMWidth)
@@ -183,13 +172,24 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 				}
 			}
 		}
-		index := 0
-		for ii := range cov {
-			for iii := range cov[ii] {
-				m.state[i].Data[index] = cov[ii][iii]
-				index++
+
+		vv := make([]float64, len(cov))
+		for i := range cov {
+			for _, value := range cov[i] {
+				vv[i] = value * value
 			}
 		}
+		for i, value := range vv {
+			vv[i] = math.Sqrt(value)
+		}
+
+		min := float64(math.MaxFloat64)
+		for i, value := range vv {
+			if value < min {
+				min, v.V = value, i
+			}
+		}
+
 		done <- v
 	}
 	index, flight, cpus := 0, 0, runtime.NumCPU()
@@ -220,63 +220,6 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 		votes = append(votes, v)
 		m.acts[v.V] = append(m.acts[v.V], v)
 	}
-	for i := range indexes {
-		if !m.save[indexes[i]] {
-			continue
-		}
-		x, y := indexes[i]/m.w, indexes[i]%m.h
-		switch votes[i].V {
-		case 7:
-			if y == 0 {
-				break
-			}
-			m.state[indexes[i]], m.state[(y-1)*m.w+x] =
-				m.state[(y-1)*m.w+x], m.state[indexes[i]]
-		case 8:
-			if y == 0 || x == m.w-1 {
-				break
-			}
-			m.state[indexes[i]], m.state[(y-1)*m.w+x+1] =
-				m.state[(y-1)*m.w+x+1], m.state[indexes[i]]
-		case 9:
-			if x == m.w-1 {
-				break
-			}
-			m.state[indexes[i]], m.state[y*m.w+x+1] =
-				m.state[y*m.w+x+1], m.state[indexes[i]]
-		case 10:
-			if y == m.h-1 || x == m.w-1 {
-				break
-			}
-			m.state[indexes[i]], m.state[(y+1)*m.w+x+1] =
-				m.state[(y+1)*m.w+x+1], m.state[indexes[i]]
-		case 11:
-			if y == m.h-1 {
-				break
-			}
-			m.state[indexes[i]], m.state[(y+1)*m.w+x] =
-				m.state[(y+1)*m.w+x], m.state[indexes[i]]
-		case 12:
-			if y == m.h-1 || x == 0 {
-				break
-			}
-			m.state[indexes[i]], m.state[(y+1)*m.w+x-1] =
-				m.state[(y+1)*m.w+x-1], m.state[indexes[i]]
-		case 13:
-			if x == 0 {
-				break
-			}
-			m.state[indexes[i]], m.state[y*m.w+x-1] =
-				m.state[y*m.w+x-1], m.state[indexes[i]]
-		case 14:
-			if y == 0 || x == 0 {
-				break
-			}
-			m.state[indexes[i]], m.state[(y-1)*m.w+x-1] =
-				m.state[(y-1)*m.w+x-1], m.state[indexes[i]]
-		case 15:
-		}
-	}
 	m.context = (m.context + 1) % MMWidth
 	m.iteration++
 	if m.iteration%30 == 0 {
@@ -296,14 +239,11 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 		sort.Slice(genome, func(i, j int) bool {
 			return genome[i].Votes > genome[i].Votes
 		})
-		m.save = make(map[int]bool)
-		for i := range genome[:512] {
-			m.save[genome[i].Index] = true
-		}
 		for i := range m.votes {
 			m.votes[i] = 0
 		}
 		m.acts = [MMWidth][]MMVote{}
+		m.index = index
 		return true, index
 	}
 	return false, ActionCount
