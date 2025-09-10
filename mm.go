@@ -29,7 +29,7 @@ type MorpheusMarkov struct {
 	w, h      int
 	context   int
 	buffers   [][MMWidth][MMWidth]byte
-	actions   [][MMWidth]TypeAction
+	actions   [][MMWidth][Actions]int
 	state     Markov
 	markov    map[Markov][Actions]int
 }
@@ -58,10 +58,12 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 				}
 			}
 		}
-		m.actions = make([][MMWidth]TypeAction, w*h)
+		m.actions = make([][MMWidth][Actions]int, w*h)
 		for i := range m.actions {
 			for ii := range m.actions[i] {
-				m.actions[i][ii] = TypeAction(m.rng.Intn(Actions))
+				for iii := range m.actions[i][ii] {
+					m.actions[i][ii][iii] = m.rng.Intn(1024)
+				}
 			}
 		}
 		m.w, m.h = w, h
@@ -78,22 +80,14 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 			for i := range Actions {
 				m.buffers[index][m.context][3*4+3+i] = 0
 			}
-			sum, act := 0.0, TypeAction(0)
+			sum := 0.0
 			for i := range votes {
 				sum += float64(votes[i])
 			}
-			total, selected := 0.0, m.rng.Float64()
-			for i := range votes {
-				total += float64(votes[i]) / sum
-				if selected < total {
-					act = TypeAction(i)
-					break
-				}
-			}
 			for i := range votes {
 				m.buffers[index][m.context][3*4+3+i] = byte(255 * float64(votes[i]) / sum)
+				m.actions[index][m.context][i] = votes[i]
 			}
-			m.actions[index][m.context] = act
 			index++
 		}
 	}
@@ -101,7 +95,7 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 	indexes := rand.Perm((m.w - 1) * (m.h - 1))
 	indexes = indexes[:len(indexes)/(4*Scale)]
 
-	done := make(chan TypeAction, 8)
+	done := make(chan [Actions]int, 8)
 	process := func(i int, seed int64) {
 		rng := rand.New(rand.NewSource(seed))
 		a := NewMatrix(MMWidth, MMWidth, make([]float32, MMWidth*MMWidth)...)
@@ -218,7 +212,9 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 	}
 	for index < len(indexes) {
 		v := <-done
-		votes[v] += 1
+		for i, value := range v {
+			votes[i] += value
+		}
 		flight--
 
 		go process(indexes[index], m.rng.Int63())
@@ -227,7 +223,9 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 	}
 	for range flight {
 		v := <-done
-		votes[v] += 1
+		for i, value := range v {
+			votes[i] += value
+		}
 	}
 	m.context = (m.context + 1) % MMWidth
 	m.iteration++
@@ -256,6 +254,9 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 			}
 			for i := range votes {
 				votes[i] >>= 1
+				if votes[i] == 0 {
+					votes[i] = 1
+				}
 			}
 		}
 		m.markov[m.state] = votes
