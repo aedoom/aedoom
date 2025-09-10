@@ -16,6 +16,12 @@ import (
 // MMWidth is the width of the morpheus model
 const MMWidth = 16 + Actions
 
+// MarkovOrder is the order of the markov model
+const MarkovOrder = 4
+
+// Markov is a markov state
+type Markov [MarkovOrder]byte
+
 // Morpheus is the morpheus model
 type MorpheusMarkov struct {
 	rng       *rand.Rand
@@ -25,14 +31,16 @@ type MorpheusMarkov struct {
 	buffers   [][MMWidth][MMWidth]byte
 	actions   [][MMWidth]TypeAction
 	votes     [Actions]int
-	index     TypeAction
+	state     Markov
+	markov    map[Markov][Actions]byte
 }
 
 // NewMorpheusMarkov creates a new morpheus markov model
-func NewMorpheusMarkov() *Morpheus {
+func NewMorpheusMarkov() *MorpheusMarkov {
 	fmt.Println("Morpheus Markov Mode")
-	morpheus := Morpheus{}
+	morpheus := MorpheusMarkov{}
 	morpheus.rng = rand.New(rand.NewSource(1))
+	morpheus.markov = make(map[Markov][Actions]byte)
 	return &morpheus
 }
 
@@ -70,8 +78,22 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 			for i := range Actions {
 				m.buffers[index][m.context][3*4+3+i] = 0
 			}
-			m.buffers[index][m.context][3*4+3+m.index] = 1
-			m.actions[index][m.context] = m.index
+			sum, act := 0.0, TypeAction(0)
+			for i := range m.votes {
+				sum += float64(m.votes[i])
+			}
+			total, selected := 0.0, m.rng.Float64()
+			for i := range m.votes {
+				total += float64(m.votes[i]) / sum
+				if selected < total {
+					act = TypeAction(i)
+					break
+				}
+			}
+			for i := range m.votes {
+				m.buffers[index][m.context][3*4+3+i] = byte(255 * float64(m.votes[i]) / sum)
+			}
+			m.actions[index][m.context] = act
 			index++
 		}
 	}
@@ -82,7 +104,7 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 	done := make(chan TypeAction, 8)
 	process := func(i int, seed int64) {
 		rng := rand.New(rand.NewSource(seed))
-		a := NewMatrix(MMWidth, MMWidth/2, make([]float32, MMWidth*MMWidth/2)...)
+		a := NewMatrix(MMWidth, MMWidth, make([]float32, MMWidth*MMWidth)...)
 		idx := 0
 		for ii := range m.buffers[i] {
 			for iii := range m.buffers[i][ii] {
@@ -94,7 +116,7 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 		const iterations = 8
 		results := make([][]float64, iterations)
 		for iteration := range iterations {
-			x, y := NewMatrix(MMWidth, MMWidth, make([]float32, MMWidth*MMWidth)...), NewMatrix(MMWidth, MMWidth, make([]float32, MMWidth*MMWidth)...)
+			x, y := NewMatrix(MMWidth, MMWidth/2, make([]float32, MMWidth*MMWidth/2)...), NewMatrix(MMWidth, MMWidth/2, make([]float32, MMWidth*MMWidth/2)...)
 			index := 0
 			for range x.Rows {
 				for range x.Cols {
@@ -105,13 +127,13 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 			}
 			x = x.Softmax(1)
 			y = y.Softmax(1)
-			a := x.MulT(a)
-			b := y.MulT(a)
+			aa := x.MulT(a)
+			bb := y.MulT(a)
 			graph := pagerank.NewGraph()
-			for ii := range a.Rows {
-				x := NewMatrix(MMWidth/2, 1, a.Data[ii*a.Cols:(ii+1)*a.Cols]...)
-				for iii := range b.Rows {
-					y := NewMatrix(MMWidth/2, 1, b.Data[iii*b.Cols:(iii+1)*b.Cols]...)
+			for ii := range aa.Rows {
+				x := NewMatrix(MMWidth/2, 1, aa.Data[ii*aa.Cols:(ii+1)*aa.Cols]...)
+				for iii := range bb.Rows {
+					y := NewMatrix(MMWidth/2, 1, bb.Data[iii*bb.Cols:(iii+1)*bb.Cols]...)
 					cs := x.CS(y)
 					if cs < 0 {
 						cs = -cs
@@ -210,17 +232,33 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 	m.context = (m.context + 1) % MMWidth
 	m.iteration++
 	if m.iteration%30 == 0 {
-		max, index := 0, TypeAction(0)
-		for i := range ActionCount {
-			if m.votes[i] > max {
-				max, index = m.votes[i], i
+		sum, act := 0.0, TypeAction(0)
+		for i := range m.votes {
+			sum += float64(m.votes[i])
+		}
+		total, selected := 0.0, m.rng.Float64()
+		for i := range m.votes {
+			total += float64(m.votes[i]) / sum
+			if selected < total {
+				act = TypeAction(i)
+				break
 			}
 		}
-		for i := range m.votes {
-			m.votes[i] = 1
+		for {
+			max := 0
+			for i := range m.votes {
+				if m.votes[i] > max {
+					max = m.votes[i]
+				}
+			}
+			if max < 8*1024 {
+				break
+			}
+			for i := range m.votes {
+				m.votes[i] >>= 1
+			}
 		}
-		m.index = index
-		return true, index
+		return true, act
 	}
 	return false, ActionCount
 }
