@@ -20,7 +20,7 @@ const MMWidth = 16 + Actions
 const MarkovOrder = 4
 
 // Markov is a markov state
-type Markov [MarkovOrder]byte
+type Markov [MarkovOrder]TypeAction
 
 // Morpheus is the morpheus model
 type MorpheusMarkov struct {
@@ -30,9 +30,8 @@ type MorpheusMarkov struct {
 	context   int
 	buffers   [][MMWidth][MMWidth]byte
 	actions   [][MMWidth]TypeAction
-	votes     [Actions]int
 	state     Markov
-	markov    map[Markov][Actions]byte
+	markov    map[Markov][Actions]int
 }
 
 // NewMorpheusMarkov creates a new morpheus markov model
@@ -40,7 +39,7 @@ func NewMorpheusMarkov() *MorpheusMarkov {
 	fmt.Println("Morpheus Markov Mode")
 	morpheus := MorpheusMarkov{}
 	morpheus.rng = rand.New(rand.NewSource(1))
-	morpheus.markov = make(map[Markov][Actions]byte)
+	morpheus.markov = make(map[Markov][Actions]int)
 	return &morpheus
 }
 
@@ -67,6 +66,7 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 		}
 		m.w, m.h = w, h
 	}
+	votes := m.markov[m.state]
 	index := 0
 	for y := 0; y < height-4; y += 4 {
 		for x := 0; x < width-4; x += 4 {
@@ -79,19 +79,19 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 				m.buffers[index][m.context][3*4+3+i] = 0
 			}
 			sum, act := 0.0, TypeAction(0)
-			for i := range m.votes {
-				sum += float64(m.votes[i])
+			for i := range votes {
+				sum += float64(votes[i])
 			}
 			total, selected := 0.0, m.rng.Float64()
-			for i := range m.votes {
-				total += float64(m.votes[i]) / sum
+			for i := range votes {
+				total += float64(votes[i]) / sum
 				if selected < total {
 					act = TypeAction(i)
 					break
 				}
 			}
-			for i := range m.votes {
-				m.buffers[index][m.context][3*4+3+i] = byte(255 * float64(m.votes[i]) / sum)
+			for i := range votes {
+				m.buffers[index][m.context][3*4+3+i] = byte(255 * float64(votes[i]) / sum)
 			}
 			m.actions[index][m.context] = act
 			index++
@@ -218,7 +218,7 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 	}
 	for index < len(indexes) {
 		v := <-done
-		m.votes[v] += 1
+		votes[v] += 1
 		flight--
 
 		go process(indexes[index], m.rng.Int63())
@@ -227,18 +227,18 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 	}
 	for range flight {
 		v := <-done
-		m.votes[v] += 1
+		votes[v] += 1
 	}
 	m.context = (m.context + 1) % MMWidth
 	m.iteration++
 	if m.iteration%30 == 0 {
 		sum, act := 0.0, TypeAction(0)
-		for i := range m.votes {
-			sum += float64(m.votes[i])
+		for i := range votes {
+			sum += float64(votes[i])
 		}
 		total, selected := 0.0, m.rng.Float64()
-		for i := range m.votes {
-			total += float64(m.votes[i]) / sum
+		for i := range votes {
+			total += float64(votes[i]) / sum
 			if selected < total {
 				act = TypeAction(i)
 				break
@@ -246,19 +246,24 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 		}
 		for {
 			max := 0
-			for i := range m.votes {
-				if m.votes[i] > max {
-					max = m.votes[i]
+			for i := range votes {
+				if votes[i] > max {
+					max = votes[i]
 				}
 			}
 			if max < 8*1024 {
 				break
 			}
-			for i := range m.votes {
-				m.votes[i] >>= 1
+			for i := range votes {
+				votes[i] >>= 1
 			}
+		}
+		m.markov[m.state] = votes
+		for i := range m.state {
+			m.state[i], act = act, m.state[i]
 		}
 		return true, act
 	}
+	m.markov[m.state] = votes
 	return false, ActionCount
 }
