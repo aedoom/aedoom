@@ -9,16 +9,9 @@ import (
 	"math"
 	"math/rand"
 	"runtime"
-	"sort"
 
 	"github.com/alixaxel/pagerank"
 )
-
-// MMVote is a genome vote
-type MMVote struct {
-	V     int
-	Index int
-}
 
 // MMWidth is the width of the morpheus model
 const MMWidth = 16 + Actions
@@ -31,8 +24,7 @@ type MorpheusMarkov struct {
 	context   int
 	buffers   [][MMWidth][MMWidth]byte
 	actions   [][MMWidth]TypeAction
-	votes     [MMWidth]int
-	acts      [MMWidth][]MMVote
+	votes     [Actions]int
 	index     TypeAction
 }
 
@@ -87,18 +79,14 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 	indexes := rand.Perm((m.w - 1) * (m.h - 1))
 	indexes = indexes[:len(indexes)/(4*Scale)]
 
-	done := make(chan MMVote, 8)
+	done := make(chan TypeAction, 8)
 	process := func(i int, seed int64) {
 		rng := rand.New(rand.NewSource(seed))
-		var v MMVote
-		v.Index = i
-		a := NewMatrix(MMWidth, MMWidth, make([]float64, MMWidth*MMWidth)...)
-		b := NewMatrix(MMWidth, MMWidth, make([]float64, MMWidth*MMWidth)...)
+		a := NewMatrix(MMWidth, MMWidth/2, make([]float32, MMWidth*MMWidth/2)...)
 		idx := 0
 		for ii := range m.buffers[i] {
 			for iii := range m.buffers[i][ii] {
-				a.Data[idx] = float64(m.buffers[i][ii][iii]) / 255.0
-				b.Data[idx] = float64(m.buffers[i][ii][iii]) / 255.0
+				a.Data[idx] = float32(m.buffers[i][ii][iii]) / 255.0
 				idx++
 			}
 		}
@@ -106,32 +94,32 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 		const iterations = 8
 		results := make([][]float64, iterations)
 		for iteration := range iterations {
-			x, y := NewMatrix(MMWidth, MMWidth, make([]float64, MMWidth*MMWidth)...), NewMatrix(MMWidth, MMWidth, make([]float64, MMWidth*MMWidth)...)
+			x, y := NewMatrix(MMWidth, MMWidth, make([]float32, MMWidth*MMWidth)...), NewMatrix(MMWidth, MMWidth, make([]float32, MMWidth*MMWidth)...)
 			index := 0
 			for range x.Rows {
 				for range x.Cols {
-					x.Data[index] = rng.NormFloat64()
-					y.Data[index] = rng.NormFloat64()
+					x.Data[index] = float32(rng.NormFloat64())
+					y.Data[index] = float32(rng.NormFloat64())
 					index++
 				}
 			}
 			x = x.Softmax(1)
 			y = y.Softmax(1)
 			a := x.MulT(a)
-			b := y.MulT(b)
+			b := y.MulT(a)
 			graph := pagerank.NewGraph()
 			for ii := range a.Rows {
-				x := NewMatrix(MMWidth, 1, a.Data[ii*a.Cols:(ii+1)*a.Cols]...)
+				x := NewMatrix(MMWidth/2, 1, a.Data[ii*a.Cols:(ii+1)*a.Cols]...)
 				for iii := range b.Rows {
-					y := NewMatrix(MMWidth, 1, b.Data[iii*b.Cols:(iii+1)*b.Cols]...)
+					y := NewMatrix(MMWidth/2, 1, b.Data[iii*b.Cols:(iii+1)*b.Cols]...)
 					cs := x.CS(y)
 					if cs < 0 {
 						cs = -cs
 					}
-					if math.IsNaN(cs) {
+					if math.IsNaN(float64(cs)) {
 						panic(cs)
 					}
-					graph.Link(uint32(ii), uint32(iii), cs)
+					graph.Link(uint32(ii), uint32(iii), float64(cs))
 				}
 			}
 			result := make([]float64, MMWidth)
@@ -192,17 +180,15 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 			vv[i] = math.Sqrt(value)
 		}
 
-		min := float64(math.MaxFloat64)
+		min, vote := float64(math.MaxFloat64), 0
 		for i, value := range vv {
 			if value < min {
-				min, v.V = value, i
+				min, vote = value, i
 			}
 		}
-		v.V = int(m.actions[i][v.V])
-		done <- v
+		done <- m.actions[i][vote]
 	}
 	index, flight, cpus := 0, 0, runtime.NumCPU()
-	votes := make([]MMVote, 0, len(indexes))
 	for index < len(indexes) && flight < cpus {
 		go process(indexes[index], m.rng.Int63())
 		flight++
@@ -210,11 +196,7 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 	}
 	for index < len(indexes) {
 		v := <-done
-		if v.V >= 0 {
-			m.votes[v.V] += 1
-		}
-		votes = append(votes, v)
-		m.acts[v.V] = append(m.acts[v.V], v)
+		m.votes[v] += 1
 		flight--
 
 		go process(indexes[index], m.rng.Int63())
@@ -223,35 +205,20 @@ func (m *MorpheusMarkov) Process(img Frame) (bool, TypeAction) {
 	}
 	for range flight {
 		v := <-done
-		if v.V >= 0 {
-			m.votes[v.V] += 1
-		}
-		votes = append(votes, v)
-		m.acts[v.V] = append(m.acts[v.V], v)
+		m.votes[v] += 1
 	}
 	m.context = (m.context + 1) % MMWidth
 	m.iteration++
 	if m.iteration%30 == 0 {
 		max, index := 0, TypeAction(0)
 		for i := range ActionCount {
-			if m.votes[i+1] > max {
-				max, index = m.votes[i+1], i
+			if m.votes[i] > max {
+				max, index = m.votes[i], i
 			}
 		}
-		genome := make([]Genome, m.w*m.h)
-		for i := range genome {
-			genome[i].Index = i
-		}
-		for _, value := range m.acts[index+1] {
-			genome[value.Index].Votes++
-		}
-		sort.Slice(genome, func(i, j int) bool {
-			return genome[i].Votes > genome[i].Votes
-		})
 		for i := range m.votes {
-			m.votes[i] = 0
+			m.votes[i] = 1
 		}
-		m.acts = [MMWidth][]MMVote{}
 		m.index = index
 		return true, index
 	}
