@@ -479,3 +479,59 @@ func Transformer[T Float](set Set[T], inputs, outputs Matrix[T]) Matrix[T] {
 	l1Out := set.Named("l1Out").MulT(formOut1).Add(set.Named("b1Out")).ReLu().Add(formOut1)
 	return set.Named("linear").MulT(l1Out).Softmax(1)
 }
+
+// GramSchmidt performs the Gram-Schmidt process on the columns of a matrix
+func (m Matrix[T]) GramSchmidt() Matrix[T] {
+	numRows := m.Rows
+	if numRows == 0 {
+		return NewMatrix[T](0, 0)
+	}
+	numCols := m.Cols
+
+	orthonormalBasis := make([][]T, numRows)
+	for i := range orthonormalBasis {
+		orthonormalBasis[i] = make([]T, numCols)
+	}
+
+	for j := 0; j < numCols; j++ {
+		currentVector := NewMatrix(numRows, 1, make([]T, numRows)...)
+		for i := 0; i < numRows; i++ {
+			currentVector.Data[i] = m.Data[i*m.Cols+j] // Get the j-th column
+		}
+
+		u := currentVector
+
+		// Subtract projections onto previously orthogonalized vectors
+		for k := 0; k < j; k++ {
+			qk := NewMatrix(numRows, 1, make([]T, numRows)...)
+			for i := 0; i < numRows; i++ {
+				qk.Data[i] = orthonormalBasis[i][k]
+			}
+
+			projection := qk.Hadamard(currentVector.MulT(qk))
+			u = u.Sub(projection)
+		}
+
+		// Normalize the resulting vector
+		normU := T(math.Sqrt(float64(u.MulT(u).Data[0])))
+		if normU == 0 {
+			// Handle linearly dependent vectors (e.g., set to zero vector or skip)
+			// For simplicity, we'll just set it to a zero vector here.
+			for i := range u.Data {
+				orthonormalBasis[i][j] = 0
+			}
+		} else {
+			for i := range u.Data {
+				orthonormalBasis[i][j] = u.Data[i] / normU
+			}
+		}
+	}
+
+	n := NewMatrix(numCols, numRows, make([]T, numCols*numRows)...)
+	for i := range orthonormalBasis {
+		for ii := range orthonormalBasis[i] {
+			n.Data[i*n.Cols+ii] = orthonormalBasis[i][ii]
+		}
+	}
+	return n
+}
