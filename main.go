@@ -296,7 +296,7 @@ func (a *AutoEncoder) Encode(input, output []float32, rng *rand.Rand, state *Sta
 
 var (
 	// FlagMode is the ai to use
-	FlagMode = flag.String("mode", "mm", "ai mode to use")
+	FlagMode = flag.String("mode", "pr", "ai mode to use")
 )
 
 func main() {
@@ -314,8 +314,10 @@ func main() {
 		game.controller = NewAE()
 	} else if *FlagMode == "mm" {
 		game.controller = NewMorpheusMarkov()
-	} else {
+	} else if *FlagMode == "m" {
 		game.controller = NewMorpheus()
+	} else {
+		game.controller = NewPageRank()
 	}
 	ebiten.SetWindowSize(screenWidth, screenHeight)
 	ebiten.SetWindowTitle("Gamepad (Ebitengine Demo)")
