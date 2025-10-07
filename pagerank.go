@@ -69,7 +69,7 @@ func (p *PageRank) Process(img Frame) (bool, TypeAction) {
 		current := 0
 		var ranks [size]uint64
 		for range loop {
-			for range 16 * 256 {
+			for range 32 * 256 {
 				sum := uint64(0)
 				for _, value := range p.markov[index][current] {
 					sum += value
@@ -129,14 +129,11 @@ func (p *PageRank) Process(img Frame) (bool, TypeAction) {
 	}
 
 	p.iteration++
-	if p.iteration%60 == 0 {
-		sum := uint64(0)
-		for _, value := range p.votes {
-			sum += value
-		}
-		if sum == 0 {
-			return false, ActionCount
-		}
+	sum := uint64(0)
+	for _, value := range p.votes {
+		sum += value
+	}
+	if p.iteration > 30 && sum == uint64(size) {
 		total, selected := uint64(0), uint64(p.rng.Intn(int(sum)))
 		for i, value := range p.votes {
 			total += value
@@ -172,6 +169,7 @@ func (p *PageRank) Process(img Frame) (bool, TypeAction) {
 		for i := range p.loop {
 			p.loop[i] <- true
 		}
+		p.iteration = 0
 		return true, p.action
 	}
 	return false, ActionCount
