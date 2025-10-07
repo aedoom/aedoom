@@ -94,6 +94,7 @@ func (p *PageRank) Process(img Frame) (bool, TypeAction) {
 				sum += value
 			}
 			if sum == 0 {
+				atomic.AddUint64(&p.votes[rng.Intn(len(p.votes))], 1)
 				continue
 			}
 			total, selected := uint64(0), uint64(rng.Intn(int(sum)))
@@ -133,7 +134,7 @@ func (p *PageRank) Process(img Frame) (bool, TypeAction) {
 	for _, value := range p.votes {
 		sum += value
 	}
-	if p.iteration > 30 && sum == uint64(size) {
+	if p.iteration > 30 && sum >= uint64(size) {
 		total, selected := uint64(0), uint64(p.rng.Intn(int(sum)))
 		for i, value := range p.votes {
 			total += value
