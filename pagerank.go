@@ -11,9 +11,10 @@ import (
 )
 
 const (
+	cycles  = 30
 	pixels  = 256
 	actions = pixels + int(ActionCount)
-	size    = actions + 30
+	size    = actions + cycles
 )
 
 // PageRank is a pagerank based model
@@ -62,6 +63,8 @@ func (p *PageRank) Process(img Frame) (bool, TypeAction) {
 						p.markov[index][current][pixels+i]++
 					}
 					p.markov[index][current][pixels+p.action]++
+					p.markov[index][current][actions+p.iteration%cycles]++
+					p.markov[index][actions+p.iteration][current%cycles]++
 					previous = current
 				}
 			}
@@ -139,7 +142,7 @@ func (p *PageRank) Process(img Frame) (bool, TypeAction) {
 	for _, value := range p.votes {
 		sum += value
 	}
-	if p.iteration > 30 && sum >= uint64(p.w*p.h) {
+	if p.iteration >= cycles && sum >= uint64(p.w*p.h) {
 		total, selected := uint64(0), uint64(p.rng.Intn(int(sum)))
 		for i, value := range p.votes {
 			total += value
