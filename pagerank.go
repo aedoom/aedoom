@@ -10,7 +10,11 @@ import (
 	"sync/atomic"
 )
 
-const size = 256 + int(ActionCount)
+const (
+	pixels  = 256
+	actions = pixels + int(ActionCount)
+	size    = actions + 30
+)
 
 // PageRank is a pagerank based model
 type PageRank struct {
@@ -21,16 +25,13 @@ type PageRank struct {
 	votes     [ActionCount]uint64
 	started   bool
 	iteration int
-	loop      [size]chan bool
+	loop      []chan bool
 }
 
 // NewPageRank new pagerank model
 func NewPageRank() *PageRank {
 	p := &PageRank{
 		rng: rand.New(rand.NewSource(1)),
-	}
-	for i := range p.loop {
-		p.loop[i] = make(chan bool, 8)
 	}
 	return p
 }
@@ -43,6 +44,10 @@ func (p *PageRank) Process(img Frame) (bool, TypeAction) {
 		w, h := width/8, height/8
 		fmt.Println(width, height, w, h, w*h)
 		p.markov = make([][size][size]uint64, w*h)
+		p.loop = make([]chan bool, w*h)
+		for i := range p.loop {
+			p.loop[i] = make(chan bool, 8)
+		}
 		p.w, p.h = w, h
 	}
 	index, previous := 0, img.GrayAt(0, 0).Y
@@ -54,9 +59,9 @@ func (p *PageRank) Process(img Frame) (bool, TypeAction) {
 					p.markov[index][previous][current]++
 					p.markov[index][256+p.action][current]++
 					for i := range ActionCount {
-						p.markov[index][current][256+i]++
+						p.markov[index][current][pixels+i]++
 					}
-					p.markov[index][current][256+p.action]++
+					p.markov[index][current][pixels+p.action]++
 					previous = current
 				}
 			}
@@ -69,7 +74,7 @@ func (p *PageRank) Process(img Frame) (bool, TypeAction) {
 		current := 0
 		var ranks [size]uint64
 		for range loop {
-			for range 32 * 256 {
+			for range 8 * 256 {
 				sum := uint64(0)
 				for _, value := range p.markov[index][current] {
 					sum += value
@@ -88,7 +93,7 @@ func (p *PageRank) Process(img Frame) (bool, TypeAction) {
 					}
 				}
 			}
-			r := ranks[256:]
+			r := ranks[pixels:actions]
 			sum := uint64(0)
 			for _, value := range r {
 				sum += value
@@ -120,7 +125,7 @@ func (p *PageRank) Process(img Frame) (bool, TypeAction) {
 		}
 	}
 	if !p.started {
-		for i := range size {
+		for i := range p.w * p.h {
 			go process(p.loop[i], p.rng.Int63(), i)
 		}
 		p.started = true
@@ -134,7 +139,7 @@ func (p *PageRank) Process(img Frame) (bool, TypeAction) {
 	for _, value := range p.votes {
 		sum += value
 	}
-	if p.iteration > 30 && sum >= uint64(size) {
+	if p.iteration > 30 && sum >= uint64(p.w*p.h) {
 		total, selected := uint64(0), uint64(p.rng.Intn(int(sum)))
 		for i, value := range p.votes {
 			total += value
