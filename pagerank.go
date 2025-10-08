@@ -11,28 +11,32 @@ import (
 )
 
 const (
-	cycles  = 30
-	pixels  = 256
-	actions = pixels + int(ActionCount)
-	size    = actions + cycles
+	// Cycles is the number of frames per cycle
+	Cycles = 30
+	// Pixels is the number of pixel values
+	Pixels = 256
+	// Acts is index where the array of action ranks end
+	Acts = Pixels + int(ActionCount)
+	// Ranks is the size of the ranks array
+	Ranks = Acts + Cycles
 )
 
 // PageRank is a pagerank based model
 type PageRank struct {
-	rng       *rand.Rand
-	markov    [][size][size]uint64
-	w, h      int
-	action    TypeAction
-	votes     [ActionCount]uint64
-	started   bool
-	iteration int
-	loop      []chan bool
+	Rng       *rand.Rand
+	Markov    [][Ranks][Ranks]uint64
+	W, H      int
+	Action    TypeAction
+	Votes     [ActionCount]uint64
+	Started   bool
+	Iteration int
+	Loop      []chan bool
 }
 
 // NewPageRank new pagerank model
 func NewPageRank() *PageRank {
 	p := &PageRank{
-		rng: rand.New(rand.NewSource(1)),
+		Rng: rand.New(rand.NewSource(1)),
 	}
 	return p
 }
@@ -41,15 +45,15 @@ func NewPageRank() *PageRank {
 func (p *PageRank) Process(img Frame) (bool, TypeAction) {
 	width := img.Frame.Bounds().Max.X
 	height := img.Frame.Bounds().Max.Y
-	if p.markov == nil {
+	if p.Markov == nil {
 		w, h := width/8, height/8
 		fmt.Println(width, height, w, h, w*h)
-		p.markov = make([][size][size]uint64, w*h)
-		p.loop = make([]chan bool, w*h)
-		for i := range p.loop {
-			p.loop[i] = make(chan bool, 8)
+		p.Markov = make([][Ranks][Ranks]uint64, w*h)
+		p.Loop = make([]chan bool, w*h)
+		for i := range p.Loop {
+			p.Loop[i] = make(chan bool, 8)
 		}
-		p.w, p.h = w, h
+		p.W, p.H = w, h
 	}
 	index, previous := 0, img.GrayAt(0, 0).Y
 	for y := 0; y < height-8; y += 8 {
@@ -57,14 +61,14 @@ func (p *PageRank) Process(img Frame) (bool, TypeAction) {
 			for yy := 0; yy < 8; yy++ {
 				for xx := 0; xx < 8; xx++ {
 					current := img.GrayAt(x+xx, y+yy).Y
-					p.markov[index][previous][current]++
-					p.markov[index][256+p.action][current]++
+					p.Markov[index][previous][current]++
+					p.Markov[index][256+p.Action][current]++
 					for i := range ActionCount {
-						p.markov[index][current][pixels+i]++
+						p.Markov[index][current][Pixels+i]++
 					}
-					p.markov[index][current][pixels+p.action]++
-					p.markov[index][current][actions+p.iteration%cycles]++
-					p.markov[index][actions+p.iteration][current%cycles]++
+					p.Markov[index][current][Pixels+p.Action]++
+					p.Markov[index][current][Acts+p.Iteration%Cycles]++
+					p.Markov[index][Acts+p.Iteration][current%Cycles]++
 					previous = current
 				}
 			}
@@ -75,19 +79,19 @@ func (p *PageRank) Process(img Frame) (bool, TypeAction) {
 	process := func(loop chan bool, seed int64, index int) {
 		rng := rand.New(rand.NewSource(seed))
 		current := 0
-		var ranks [size]uint64
+		var ranks [Ranks]uint64
 		for range loop {
 			for range 8 * 256 {
 				sum := uint64(0)
-				for _, value := range p.markov[index][current] {
+				for _, value := range p.Markov[index][current] {
 					sum += value
 				}
 				if sum == 0 {
-					current = rng.Intn(size)
+					current = rng.Intn(Ranks)
 					continue
 				}
 				total, selected := uint64(0), uint64(rng.Intn(int(sum)))
-				for i, value := range p.markov[index][current] {
+				for i, value := range p.Markov[index][current] {
 					total += value
 					if selected < total {
 						ranks[i]++
@@ -96,20 +100,20 @@ func (p *PageRank) Process(img Frame) (bool, TypeAction) {
 					}
 				}
 			}
-			r := ranks[pixels:actions]
+			r := ranks[Pixels:Acts]
 			sum := uint64(0)
 			for _, value := range r {
 				sum += value
 			}
 			if sum == 0 {
-				atomic.AddUint64(&p.votes[rng.Intn(len(p.votes))], 1)
+				atomic.AddUint64(&p.Votes[rng.Intn(len(p.Votes))], 1)
 				continue
 			}
 			total, selected := uint64(0), uint64(rng.Intn(int(sum)))
 			for i, value := range r {
 				total += value
 				if selected < total {
-					atomic.AddUint64(&p.votes[i], 1)
+					atomic.AddUint64(&p.Votes[i], 1)
 					break
 				}
 			}
@@ -127,39 +131,39 @@ func (p *PageRank) Process(img Frame) (bool, TypeAction) {
 			}
 		}
 	}
-	if !p.started {
-		for i := range p.w * p.h {
-			go process(p.loop[i], p.rng.Int63(), i)
+	if !p.Started {
+		for i := range p.W * p.H {
+			go process(p.Loop[i], p.Rng.Int63(), i)
 		}
-		p.started = true
-		for i := range p.loop {
-			p.loop[i] <- true
+		p.Started = true
+		for i := range p.Loop {
+			p.Loop[i] <- true
 		}
 	}
 
-	p.iteration++
+	p.Iteration++
 	sum := uint64(0)
-	for _, value := range p.votes {
+	for _, value := range p.Votes {
 		sum += value
 	}
-	if p.iteration >= cycles && sum >= uint64(p.w*p.h) {
-		total, selected := uint64(0), uint64(p.rng.Intn(int(sum)))
-		for i, value := range p.votes {
+	if p.Iteration >= Cycles && sum >= uint64(p.W*p.H) {
+		total, selected := uint64(0), uint64(p.Rng.Intn(int(sum)))
+		for i, value := range p.Votes {
 			total += value
 			if selected < total {
-				p.action = TypeAction(i)
+				p.Action = TypeAction(i)
 				break
 			}
 		}
-		for i := range p.votes {
-			atomic.StoreUint64(&p.votes[i], 0)
+		for i := range p.Votes {
+			atomic.StoreUint64(&p.Votes[i], 0)
 		}
 		shift := false
 	outer:
-		for i := range p.markov {
-			for ii := range p.markov[i] {
-				for iii := range p.markov[i][ii] {
-					if p.markov[i][ii][iii] > 256*256 {
+		for i := range p.Markov {
+			for ii := range p.Markov[i] {
+				for iii := range p.Markov[i][ii] {
+					if p.Markov[i][ii][iii] > 256*256 {
 						shift = true
 						break outer
 					}
@@ -167,19 +171,19 @@ func (p *PageRank) Process(img Frame) (bool, TypeAction) {
 			}
 		}
 		if shift {
-			for i := range p.markov {
-				for ii := range p.markov[i] {
-					for iii := range p.markov[i][ii] {
-						p.markov[i][ii][iii] >>= 1
+			for i := range p.Markov {
+				for ii := range p.Markov[i] {
+					for iii := range p.Markov[i][ii] {
+						p.Markov[i][ii][iii] >>= 1
 					}
 				}
 			}
 		}
-		for i := range p.loop {
-			p.loop[i] <- true
+		for i := range p.Loop {
+			p.Loop[i] <- true
 		}
-		p.iteration = 0
-		return true, p.action
+		p.Iteration = 0
+		return true, p.Action
 	}
 	return false, ActionCount
 }
