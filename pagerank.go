@@ -60,7 +60,12 @@ func (p *PageRank) Process(img Frame) (bool, TypeAction) {
 		for x := 0; x < width-8; x += 8 {
 			for yy := 0; yy < 8; yy++ {
 				for xx := 0; xx < 8; xx++ {
-					current := img.GrayAt(x+xx, y+yy).Y
+					current := byte(0)
+					if y&1 == 0 {
+						current = img.GrayAt(x+xx, y+yy).Y
+					} else {
+						current = img.GrayAt(7-x+xx, y+yy).Y
+					}
 					p.Markov[index][previous][current]++
 					p.Markov[index][256+p.Action][current]++
 					for i := range ActionCount {
