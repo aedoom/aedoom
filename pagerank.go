@@ -73,7 +73,7 @@ func (p *PageRank) Process(img Frame) (bool, TypeAction) {
 					}
 					p.Markov[index][current][Pixels+p.Action]++
 					p.Markov[index][current][Acts+p.Iteration%Cycles]++
-					p.Markov[index][Acts+p.Iteration][current%Cycles]++
+					p.Markov[index][Acts+p.Iteration%Cycles][current]++
 					previous = current
 				}
 			}
