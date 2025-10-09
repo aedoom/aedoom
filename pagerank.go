@@ -41,6 +41,62 @@ func NewPageRank() *PageRank {
 	return p
 }
 
+func (p *PageRank) process(loop chan bool, seed int64, index int) {
+	rng := rand.New(rand.NewSource(seed))
+	current := 0
+	var ranks [Ranks]uint64
+	for range loop {
+		for range 8 * 256 {
+			sum := uint64(0)
+			for _, value := range p.Markov[index][current] {
+				sum += value
+			}
+			if sum == 0 {
+				current = rng.Intn(Ranks)
+				continue
+			}
+			total, selected := uint64(0), uint64(rng.Intn(int(sum)))
+			for i, value := range p.Markov[index][current] {
+				total += value
+				if selected < total {
+					ranks[i]++
+					current = i
+					break
+				}
+			}
+		}
+		r := ranks[Pixels:Acts]
+		sum := uint64(0)
+		for _, value := range r {
+			sum += value
+		}
+		if sum == 0 {
+			atomic.AddUint64(&p.Votes[rng.Intn(len(p.Votes))], 1)
+			continue
+		}
+		total, selected := uint64(0), uint64(rng.Intn(int(sum)))
+		for i, value := range r {
+			total += value
+			if selected < total {
+				atomic.AddUint64(&p.Votes[i], 1)
+				break
+			}
+		}
+		shift := false
+		for i := range ranks {
+			if ranks[i] > 256*256 {
+				shift = true
+				break
+			}
+		}
+		if shift {
+			for i := range ranks {
+				ranks[i] >>= 1
+			}
+		}
+	}
+}
+
 // Process processes a frame
 func (p *PageRank) Process(img Frame) (bool, TypeAction) {
 	width := img.Frame.Bounds().Max.X
@@ -55,6 +111,7 @@ func (p *PageRank) Process(img Frame) (bool, TypeAction) {
 		}
 		p.W, p.H = w, h
 	}
+
 	index, previous := 0, img.GrayAt(0, 0).Y
 	for y := 0; y < height-8; y += 8 {
 		for x := 0; x < width-8; x += 8 {
@@ -81,64 +138,9 @@ func (p *PageRank) Process(img Frame) (bool, TypeAction) {
 		}
 	}
 
-	process := func(loop chan bool, seed int64, index int) {
-		rng := rand.New(rand.NewSource(seed))
-		current := 0
-		var ranks [Ranks]uint64
-		for range loop {
-			for range 8 * 256 {
-				sum := uint64(0)
-				for _, value := range p.Markov[index][current] {
-					sum += value
-				}
-				if sum == 0 {
-					current = rng.Intn(Ranks)
-					continue
-				}
-				total, selected := uint64(0), uint64(rng.Intn(int(sum)))
-				for i, value := range p.Markov[index][current] {
-					total += value
-					if selected < total {
-						ranks[i]++
-						current = i
-						break
-					}
-				}
-			}
-			r := ranks[Pixels:Acts]
-			sum := uint64(0)
-			for _, value := range r {
-				sum += value
-			}
-			if sum == 0 {
-				atomic.AddUint64(&p.Votes[rng.Intn(len(p.Votes))], 1)
-				continue
-			}
-			total, selected := uint64(0), uint64(rng.Intn(int(sum)))
-			for i, value := range r {
-				total += value
-				if selected < total {
-					atomic.AddUint64(&p.Votes[i], 1)
-					break
-				}
-			}
-			shift := false
-			for i := range ranks {
-				if ranks[i] > 256*256 {
-					shift = true
-					break
-				}
-			}
-			if shift {
-				for i := range ranks {
-					ranks[i] >>= 1
-				}
-			}
-		}
-	}
 	if !p.Started {
 		for i := range p.W * p.H {
-			go process(p.Loop[i], p.Rng.Int63(), i)
+			go p.process(p.Loop[i], p.Rng.Int63(), i)
 		}
 		p.Started = true
 		for i := range p.Loop {
