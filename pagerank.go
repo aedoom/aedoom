@@ -118,6 +118,23 @@ func (p *PageRank) process(loop chan Frame, seed int64, index int, x, y int) {
 				ranks[i] >>= 1
 			}
 		}
+		shift = false
+	outer:
+		for ii := range p.Markov[index] {
+			for iii := range p.Markov[index][ii] {
+				if p.Markov[index][ii][iii] > 256*256 {
+					shift = true
+					break outer
+				}
+			}
+		}
+		if shift {
+			for ii := range p.Markov[index] {
+				for iii := range p.Markov[index][ii] {
+					p.Markov[index][ii][iii] >>= 1
+				}
+			}
+		}
 	}
 }
 
@@ -166,27 +183,6 @@ func (p *PageRank) Process(img Frame) (bool, TypeAction) {
 		}
 		for i := range p.Votes {
 			atomic.StoreUint64(&p.Votes[i], 0)
-		}
-		shift := false
-	outer:
-		for i := range p.Markov {
-			for ii := range p.Markov[i] {
-				for iii := range p.Markov[i][ii] {
-					if p.Markov[i][ii][iii] > 256*256 {
-						shift = true
-						break outer
-					}
-				}
-			}
-		}
-		if shift {
-			for i := range p.Markov {
-				for ii := range p.Markov[i] {
-					for iii := range p.Markov[i][ii] {
-						p.Markov[i][ii][iii] >>= 1
-					}
-				}
-			}
 		}
 		p.Iteration = 0
 		return true, p.Action
