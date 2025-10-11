@@ -144,10 +144,9 @@ func (p *PageRank) Process(img Frame) (bool, TypeAction) {
 	height := img.Frame.Bounds().Max.Y
 	if p.Markov == nil {
 		w, h := width/8, height/8
-		fmt.Println(width, height, w, h, w*h)
-		p.Markov = make([][Ranks][Ranks]uint64, w*h)
-		p.Loop = make([]chan Frame, w*h)
-		fmt.Println(w * h)
+		fmt.Println(width, height, w, h, w*h+(w/5)*(h/5))
+		p.Markov = make([][Ranks][Ranks]uint64, w*h+(w/5)*(h/5))
+		p.Loop = make([]chan Frame, w*h+(w/5)*(h/5))
 		for i := range p.Loop {
 			p.Loop[i] = make(chan Frame, 8)
 		}
@@ -160,7 +159,12 @@ func (p *PageRank) Process(img Frame) (bool, TypeAction) {
 				index++
 			}
 		}
-		fmt.Println(index)
+		for y := 0; y < height; y += 40 {
+			for x := 0; x < width; x += 40 {
+				go p.process(p.Loop[index], p.Rng.Int63(), index, x, y, 40)
+				index++
+			}
+		}
 	}
 
 	for i := range p.Loop {
@@ -172,7 +176,7 @@ func (p *PageRank) Process(img Frame) (bool, TypeAction) {
 	for _, value := range p.Votes {
 		sum += value
 	}
-	if p.Iteration >= Cycles && sum >= uint64(p.W*p.H) {
+	if p.Iteration >= Cycles && sum >= uint64(p.W*p.H)+uint64((p.W/5)*(p.H/5)) {
 		total, selected := uint64(0), uint64(p.Rng.Intn(int(sum)))
 		for i, value := range p.Votes {
 			total += value
