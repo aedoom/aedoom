@@ -40,20 +40,20 @@ func NewPageRank() *PageRank {
 	return p
 }
 
-func (p *PageRank) process(loop chan Frame, seed int64, index int, x, y int) {
+func (p *PageRank) process(loop chan Frame, seed int64, index int, x, y, size int) {
 	rng := rand.New(rand.NewSource(seed))
 	current := 0
 	var ranks [Ranks]uint64
 	for {
 		for img := range loop {
 			previous := img.GrayAt(x, y).Y
-			for yy := 0; yy < 8; yy++ {
-				for xx := 0; xx < 8; xx++ {
+			for yy := 0; yy < size; yy++ {
+				for xx := 0; xx < size; xx++ {
 					current := byte(0)
 					if y&1 == 0 {
 						current = img.GrayAt(x+xx, y+yy).Y
 					} else {
-						current = img.GrayAt(7-x+xx, y+yy).Y
+						current = img.GrayAt((size-1)-x+xx, y+yy).Y
 					}
 					p.Markov[index][previous][current]++
 					p.Markov[index][256+p.Action][current]++
@@ -156,7 +156,7 @@ func (p *PageRank) Process(img Frame) (bool, TypeAction) {
 		index := 0
 		for y := 0; y < height; y += 8 {
 			for x := 0; x < width; x += 8 {
-				go p.process(p.Loop[index], p.Rng.Int63(), index, x, y)
+				go p.process(p.Loop[index], p.Rng.Int63(), index, x, y, 8)
 				index++
 			}
 		}
